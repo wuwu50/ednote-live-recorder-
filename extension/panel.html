@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>小紅書直播錄影機</title><link rel="stylesheet" href="panel.css"></head>
+<body>
+<div class="app">
+  <header><div class="brand"><span class="logo">●</span><div><h1>小紅書直播錄影機</h1><p>Chrome 專用 · 本機錄製</p></div></div><span class="badge" id="badge">準備就緒</span></header>
+  <div id="demo" hidden>介面預覽 · 按鈕不會啟動錄影</div>
+  <main>
+    <section class="record-card">
+      <div class="section-label">錄影狀態</div>
+      <div class="status-line"><span class="light" id="light"></span><span id="status" role="status" aria-live="polite">讀取中…</span></div>
+      <div id="time">00:00:00</div>
+      <p id="capture-format" class="target-help"></p><div class="stats"><span>已錄製時間</span><span id="size">0.0 MB</span></div>
+      <p id="segments" class="target-help"></p>
+      <div class="target"><div class="target-icon">▣</div><div class="target-content"><div class="section-label">錄製分頁</div><div id="title">正在取得目標…</div><div id="site"></div></div><button id="locate" class="text-button">查看分頁 ↗</button></div>
+      <p class="target-help">要更換目標，請在想錄製的分頁點工具列圖示，再按「開啟獨立控制視窗」。</p>
+      <div class="actions"><button id="start" class="primary" disabled>● 開始錄影</button><button id="stop" class="stop" disabled>■ 停止並背景儲存</button></div>
+      <div class="recovery"><button id="retry" class="primary" hidden>重新儲存影片</button><button id="save-segments" class="text-button" hidden>改用分段儲存</button><button id="discard" class="text-button" hidden>刪除暫存影片</button></div>
+      <p id="error" role="alert"></p>
+      <section id="background-jobs" hidden><h2>背景儲存</h2><p class="target-help">前一部影片儲存中，也能開始下一次錄影。請保持 Chrome 開啟，等所有影片儲存完成再更新程式。</p><div id="job-list"></div></section><button id="diagnostics" class="text-button">匯出錯誤紀錄</button>
+    </section>
+    <aside>
+      <section class="settings"><h2>錄製設定</h2><label for="quality">畫面品質</label><select id="quality"><option value="1080p120" selected>1080p · 120 FPS / 32 Mbps</option><option value="1080p60">1080p · 60 FPS / 16 Mbps</option><option value="normal">標準 · 30 fps / 4 Mbps</option><option value="high">高畫質 · 30 fps / 8 Mbps</option></select><label class="audio-mode"><input id="monitor-audio" type="checkbox"> 錄影時也播放聲音到喇叭</label><p class="audio-help">預設安靜錄影：分頁靜音會暫時解除，喇叭不播放，停止時恢復。播放器內請保持有聲音。</p><div class="setting-row"><span>畫面來源</span><strong>指定分頁</strong></div><div class="setting-row"><span>音訊來源</span><strong>指定分頁</strong></div><div class="setting-row"><span>麥克風</span><strong class="muted">關閉</strong></div><div class="setting-row"><span>其他程式音訊</span><strong class="muted">不擷取</strong></div><p>影片在本機處理，固定儲存 MP4 影片。</p></section>
+      <section class="settings"><h2>儲存資料夾</h2><p id="folder-name">正在讀取設定…</p><button id="choose-folder" class="update-check">選擇／更換資料夾</button><button id="allow-folder" class="text-button" hidden>允許存取</button><p id="folder-status" role="status"></p><div class="setting-row"><span>影片格式</span><strong>MP4</strong></div><p>Chrome 僅提供所選資料夾名稱；請從選擇視窗確認實際位置。若再次詢問權限，請允許存取。</p></section><section class="background-note"><span>↙</span><h2>可以放到背景錄製</h2><p>切換分頁、使用其他程式或最小化 Chrome，錄影工作仍會持續。</p><p class="caution">部分網站最小化後可能停止播放或更新畫面，請先短錄測試。</p></section>
+      <section class="background-note"><h2>自動合併成一部 MP4</h2><p>錄製時每約 1 GB 或 5 分鐘做分段保護，停止後自動合併成單一 MP4，存入設定好的資料夾。合併不重新壓縮畫質，請保持 Chrome 開啟直到完成。</p><p class="caution">切換段落原有的短暫影音缺口無法補回。若合併失敗，片段仍保留，可重新儲存或改用分段儲存。</p></section>
+      <section class="updates">
+        <div class="update-heading"><h2>程式更新</h2><span id="version">版本 —</span></div>
+        <button id="check-update" class="update-check">↻ 檢查更新</button>
+        <p id="update-status" role="status" aria-live="polite">尚未設定更新來源</p>
+        <p id="update-notes" hidden></p>
+        <a id="update-install" class="download-link" href="rednoteliverecorder://update" hidden>確認更新並自動安裝</a>
+        <details><summary>設定更新來源／手動下載</summary><label for="update-source">版本 JSON 網址</label><input id="update-source" type="url" placeholder="https://你的網站/version.json" autocomplete="off" spellcheck="false"><button id="save-update-source" class="update-check">儲存來源</button><p>填入發布者提供的 HTTPS 網址。留空並儲存即可關閉線上檢查。Windows 官方來源使用自動安裝；自訂來源使用下方手動下載。</p><a id="update-download" class="download-link" target="_blank" rel="noopener noreferrer" hidden>手動下載安裝包（需自行開啟）↗</a></details>
+        <p class="update-hint">按「更新並自動安裝」，在更新視窗確認即可，不需選 EXE 或安裝資料夾。Chrome 可能詢問是否開啟更新器。安裝完成後會自動啟用新版並重開控制視窗；錄影或儲存尚未完成時會延後。首次從 v1.13 或更早版本升級，仍需手動重新載入一次來啟用此功能。</p>
+      </section>
+    </aside>
+  </main>
+  <footer><span>1 選擇分頁　→　2 開始錄影　→　3 停止並儲存</span><span>錄影時請保持 Chrome 開啟</span></footer>
+</div>
+<script src="updates.js"></script>
+<script src="output-folder.js"></script>
+<script src="panel.js"></script>
+</body></html>

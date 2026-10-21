@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小紅書直播錄影機</title>
+<link rel="stylesheet" href="popup.css">
+<body>
+  <header><span class="dot"></span> 小紅書直播錄影機</header>
+  <p class="intro">只錄這個分頁的畫面與聲音</p>
+  <button id="panel" class="secondary">開啟獨立控制視窗</button>
+  <div class="card">
+    <strong>指定主播自動錄影 · 測試版</strong>
+    <label for="host-id">主播帳號 ID</label>
+    <input id="host-id" value="5f0c0b43000000000101fb9c" maxlength="24" style="width:100%;box-sizing:border-box">
+    <p id="live-status" role="status">尚未啟用待命</p>
+    <button id="live-arm">啟用目前分頁待命</button>
+    <button id="live-disarm" class="secondary">解除待命並儲存</button>
+    <button id="live-check" class="secondary">立即檢查開播</button>
+    <p class="note">先在獨立控制視窗選好儲存資料夾，再回到此主播個人頁點工具列圖示啟用。待命會持續擷取分頁，只有開播才寫入影片。不要關閉或挪用此分頁；重開 Chrome 後需重新啟用。</p>
+  </div>
+  <div class="card">
+    <div id="status" role="status" aria-live="polite">讀取中…</div>
+    <div id="title"></div>
+    <div id="time">00:00:00</div>
+    <div id="size"></div>
+  </div>
+  <label for="quality">畫面品質</label>
+  <select id="quality"><option value="1080p120" selected>1080p · 120 FPS / 32 Mbps</option><option value="1080p60">1080p · 60 FPS / 16 Mbps</option><option value="normal">標準 · 30 fps / 4 Mbps</option><option value="high">高畫質 · 30 fps / 8 Mbps</option></select><label class="audio-mode"><input id="monitor-audio" type="checkbox"> 錄影時也播放聲音到喇叭</label><p class="audio-help">預設安靜錄影：分頁靜音會暫時解除，喇叭不播放，停止時恢復。播放器內請保持有聲音。</p>
+  <button id="start" disabled>開始錄製目前分頁</button>
+  <button id="stop" class="stop" disabled>停止並儲存</button>
+  <button id="retry" hidden>重新儲存影片</button>
+  <button id="discard" class="secondary" hidden>刪除暫存影片</button>
+  <p id="error" role="alert"></p>
+  <p class="note">開始後可以切換分頁或最小化 Chrome。請保持瀏覽器開啟；部分網站最小化後可能停止播放。</p>
+  <footer>其他分頁與程式的聲音不會混入 · 不啟用麥克風</footer>
+  <script src="popup.js"></script>
+</body>
+</html>

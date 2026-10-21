@@ -1,0 +1,48 @@
+name: Publish recorder
+on:
+  push:
+    branches: [main]
+    paths: ['extension/**', 'installer/**', 'tests/**', '.github/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: recorder-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate recorder and queue
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem extension/*.js,extension/vendor/*.mjs | ForEach-Object {
+            node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Syntax failed: $($_.Name)" }
+          }
+          foreach ($test in @('test-recorder','test-updates','test-audio-routing','test-background','test-merge','test-save-queue','test-installed-update','test-live-monitor','test-standby')) {
+            node "tests/$test.cjs"
+            if ($LASTEXITCODE -ne 0) { throw "Test failed: $test" }
+          }
+      - name: Build installer
+        shell: pwsh
+        run: ./installer/build.ps1
+      - name: Verify release packaging and feed
+        shell: pwsh
+        run: python tests/test-publish.py
+      - name: Verify install upgrade and uninstall
+        shell: pwsh
+        run: ./installer/test-install.ps1
+      - name: Publish verified installer ZIP and update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          PYTHONUTF8: '1'
+        shell: pwsh
+        run: python .github/scripts/publish-release.py

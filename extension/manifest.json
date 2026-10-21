@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "小紅書直播錄影機",
+  "version": "0.1.0",
+  "description": "指定小紅書主播開播監控、啟用待命後自動錄製分頁影音及本機 MP4 儲存。",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "activeTab",
+    "tabCapture",
+    "offscreen",
+    "downloads",
+    "storage",
+    "unlimitedStorage",
+    "alarms",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "小紅書直播錄影機"
+  },
+  "host_permissions": [
+    "https://www.xiaohongshu.com/*",
+    "https://www.rednote.com/*"
+  ]
+}

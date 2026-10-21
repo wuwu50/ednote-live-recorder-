@@ -1,0 +1,5 @@
+{
+  "version": "1.2.0",
+  "downloadUrl": "https://example.invalid/releases/ChromeRecorder-1.2.0.zip",
+  "notes": "新增程式內檢查更新與更新來源設定。此檔僅為格式範例，下載網址須改成實際發布網址。"
+}
