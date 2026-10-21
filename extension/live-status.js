@@ -30,6 +30,7 @@ async function reportLiveSample(sample, {hostId,tabId,confirmedEnd = false,force
       if (['live','ended','offline'].includes(observation.state)) observation.lastNotifiedState = observation.state;
     } catch (_) { observation.notificationError = '桌面通知未送出，請檢查 Chrome／Windows 通知設定；上方狀態仍有效。'; }
   }
+  if(typeof traceEvent === 'function' && forceNotify) await traceEvent('手動直播檢查',{hostId,tabId,kind:sample.kind,detail:observation.detail,error:observation.notificationError});
   await chrome.storage.session.set({liveObservation:observation});
   if (typeof ToolbarStatus !== 'undefined') void ToolbarStatus.refresh().catch(()=>{});
   return observation;

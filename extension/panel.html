@@ -29,7 +29,7 @@
       <div class="actions"><button id="start" class="primary" disabled>● 開始錄影</button><button id="stop" class="stop" disabled>■ 停止並背景儲存</button></div>
       <div class="recovery"><button id="retry" class="primary" hidden>重新儲存影片</button><button id="save-segments" class="text-button" hidden>改用分段儲存</button><button id="discard" class="text-button" hidden>刪除暫存影片</button></div>
       <p id="error" role="alert"></p>
-      <section id="background-jobs" hidden><h2>背景儲存</h2><p class="target-help">前一部影片儲存中，也能開始下一次錄影。請保持 Chrome 開啟，等所有影片儲存完成再更新程式。</p><div id="job-list"></div></section><button id="diagnostics" class="text-button">匯出錯誤紀錄</button>
+      <section id="background-jobs" hidden><h2>背景儲存</h2><p class="target-help">前一部影片儲存中，也能開始下一次錄影。請保持 Chrome 開啟，等所有影片儲存完成再更新程式。</p><div id="job-list"></div></section><section><h2>問題排查紀錄</h2><p class="target-help">自動記錄直播判斷、跳轉、錄影與存檔狀況，最多保留 500 筆流程／7 天。只存本機，不自動上傳；不記錄影片、網頁內容或分享 token。</p><input id="diagnostic-note" type="text" maxlength="300" placeholder="遇到什麼問題？（選填，請勿輸入密碼）"><button id="diagnostic-mark" class="text-button">記下目前異常</button><button id="diagnostics" class="text-button">匯出診斷紀錄</button><button id="diagnostic-clear" class="text-button">清除紀錄</button><p id="diagnostic-feedback" class="target-help" role="status"></p></section>
     </section>
     <aside>
 <section class="settings"><h2>儲存資料夾</h2><p id="folder-name">正在讀取設定…</p><button id="choose-folder" class="update-check">選擇／更換資料夾</button><button id="allow-folder" class="text-button" hidden>允許存取</button><p id="folder-status" role="status"></p><div class="setting-row"><span>影片格式</span><strong>MP4</strong></div><p>Chrome 僅提供所選資料夾名稱；請從選擇視窗確認實際位置。若再次詢問權限，請允許存取。</p></section>

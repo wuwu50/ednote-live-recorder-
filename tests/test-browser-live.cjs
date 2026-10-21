@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const host='5f0c0b43000000000101fb9c';
 const icon='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 (async()=>{
- const ctx=await chromium.launchPersistentContext(path.resolve('build/browser-test-'+Date.now()),{executablePath:process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,viewport:{width:960,height:720},args:['--enable-unsafe-extension-debugging','--autoplay-policy=no-user-gesture-required'],ignoreDefaultArgs:['--disable-extensions']});
+ const ctx=await chromium.launchPersistentContext(path.resolve('build/browser-test-'+Date.now()),{executablePath:process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,acceptDownloads:true,viewport:{width:960,height:720},args:['--enable-unsafe-extension-debugging','--autoplay-policy=no-user-gesture-required'],ignoreDefaultArgs:['--disable-extensions']});
  try{
   const cdp=await ctx.browser().newBrowserCDPSession();const {id:extension}=await cdp.send('Extensions.loadUnpacked',{path:path.resolve('extension')});
   let live=true,mode=process.argv[2]||'new-tab';
@@ -42,6 +42,15 @@ const icon='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAA
   assert(source.url().includes('/livestream/'),'authorized original tab navigated to the room');
   assert.equal(ctx.pages().filter(p=>p.url().includes('/livestream/')).length,1,'auxiliary live tab is closed after redirect');
   await source.bringToFront();await source.waitForTimeout(2500);
+  await panel.locator('#diagnostic-note').fill('測試 token=TEST_SECRET');
+  await panel.locator('#diagnostic-mark').click();
+  await panel.waitForFunction(()=>document.querySelector('#diagnostic-feedback').textContent.includes('已記下'));
+  // Inspect the UI-generated download payload; OS save dialogs are outside this test.
+  await panel.evaluate(()=>{HTMLAnchorElement.prototype.click=function(){void fetch(this.href).then(r=>r.json()).then(value=>window.exportedDiagnostic=value);};});
+  await panel.locator('#diagnostics').click();
+  await panel.waitForFunction(()=>window.exportedDiagnostic);
+  const report=await panel.evaluate(()=>window.exportedDiagnostic);
+  assert.equal(report.schema,2);assert(report.workflow.some(row=>row.event==='自動錄影來源已核對'));assert(report.workflow.some(row=>row.event==='使用者標記異常' && row.evidence.includes('videos')));assert(!JSON.stringify(report).includes('TEST_SECRET'));
   const badge=await panel.evaluate(()=>chrome.action.getBadgeText({}));assert.equal(badge,'錄');
   live=false;await source.evaluate(()=>{document.body.insertAdjacentHTML('afterbegin','<h1>直播已结束</h1>')});
   for(let i=0;i<2;i++)await panel.evaluate(()=>chrome.runtime.sendMessage({target:'background',type:'live-check'}));
@@ -65,5 +74,8 @@ const icon='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAA
   assert.equal(saved.length,1);assert(saved[0].pixel[1]>100&&saved[0].pixel[0]<80,'saved MP4 contains green live-room pixels, not red profile pixels');
   console.log('PASS REAL EXTENSION',JSON.stringify(saved));
   await panel.evaluate(()=>chrome.runtime.sendMessage({target:'background',type:'live-disarm'}));
+  panel.once('dialog',dialog=>dialog.accept());await panel.locator('#diagnostic-clear').click();
+  await panel.waitForFunction(()=>document.querySelector('#diagnostic-feedback').textContent.includes('已清除'));
+  assert.deepEqual(await panel.evaluate(async()=>(await chrome.storage.local.get('workflowDiagnostics')).workflowDiagnostics),[]);
  }finally{await ctx.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

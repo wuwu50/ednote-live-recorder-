@@ -1,3 +1,11 @@
+let lastPanelError='', lastPanelErrorAt=0;
+function recordPanelError(error) {
+  if(typeof chrome === 'undefined' || !chrome.runtime?.sendMessage)return;
+  const text=String(error?.message || error);
+  if(text === lastPanelError && Date.now()-lastPanelErrorAt<60000)return;
+  lastPanelError=text;lastPanelErrorAt=Date.now();
+  void chrome.runtime.sendMessage({target:'background',type:'diagnostic-ui',error:text}).catch(()=>{});
+}
 const $ = id => document.getElementById(id);
 const preview = new URLSearchParams(location.search).has('demo');
 let target = null, state = {phase:'idle'}, busy = false, localError = '';
@@ -13,7 +21,7 @@ async function loadFolder() {
     const backend = preview ? {ready:false} : await command('folder-status');
     folderReady = !!folderHandle && backend.ready;
     $('folder-status').textContent = folderReady ? '資料夾已授權；請保持此控制視窗開啟，可最小化。' : '請選擇資料夾並允許存取；記住資料夾名稱不代表仍有寫入權限。';
-  } catch (error) { folderReady = false; $('folder-status').textContent = error.message; }
+  } catch (error) { recordPanelError(error); folderReady = false; $('folder-status').textContent = error.message; }
   finally { folderLoading = false; render(); }
 }
 $('choose-folder').addEventListener('click',async()=>{
@@ -27,14 +35,14 @@ $('choose-folder').addEventListener('click',async()=>{
     await command('verify-folder');
     localError = '';
     await loadFolder();
-  } catch (error) { if (error.name !== 'AbortError') { folderReady = false; localError = `資料夾尚未可用：${error.message}`; $('folder-status').textContent = localError; } }
+  } catch (error) { recordPanelError(error); if (error.name !== 'AbortError') { folderReady = false; localError = `資料夾尚未可用：${error.message}`; $('folder-status').textContent = localError; } }
   finally { busy = false; render(); }
 });
 $('allow-folder').addEventListener('click',async()=>{
   if (busy || folderLoading || !['idle','error','ready'].includes(state.phase)) return;
   busy = true; render();
   try { await OutputFolder.authorized(folderHandle,true); await command('verify-folder'); await loadFolder(); localError = ''; }
-  catch (error) { folderReady = false; localError = error.message; $('folder-status').textContent = localError; }
+  catch (error) { recordPanelError(error); folderReady = false; localError = error.message; $('folder-status').textContent = localError; }
   finally { busy = false; render(); }
 });
 const officialUpdateSource = 'https://raw.githubusercontent.com/wuwu50/ednote-live-recorder-/main/version.json';
@@ -61,7 +69,7 @@ function renderJobs() {
         button.addEventListener('click',async()=>{
           if (type === 'discard' && !confirm('確定刪除這部尚未儲存的錄影？其他錄影不受影響。')) return;
           try { if (type !== 'discard') await OutputFolder.authorized(folderHandle,true); }
-          catch (error) { localError = error.message; render(); return; }
+          catch (error) { recordPanelError(error); localError = error.message; render(); return; }
           return run(type,{jobId:job.id});
         }); row.append(button);
       }
@@ -178,40 +186,52 @@ async function refresh() {
     folderReady = !!folder.ready;
     $('folder-name').textContent = folder.name ? `儲存至：${folder.name}` : '尚未選擇儲存資料夾';
     $('folder-status').textContent = folderReady ? '背景寫入檢查已通過；保持此控制視窗開啟（可最小化）。' : folder.name ? folder.permission === 'granted' ? '資料夾已授權，仍需背景寫入檢查；請按「允許存取」。' : '資料夾已記住，但目前沒有寫入權限；請按「允許存取」。' : '請先選擇儲存資料夾。';
-  } catch (error) { localError = error.message; }
+  } catch (error) { recordPanelError(error); localError = error.message; }
   render();
 }
 async function run(type,extra={}) {
   if (busy) return;
   busy = true; pendingOperation = type; localError = ''; render();
   try { await command(type,extra); }
-  catch (error) { localError = error.message; }
+  catch (error) { recordPanelError(error); localError = error.message; }
   finally { busy = false; pendingOperation = ''; await refresh(); }
 }
 $('start').addEventListener('click',async()=>{
   try { await OutputFolder.authorized(folderHandle,true); }
-  catch (error) { localError = error.message; render(); return; }
+  catch (error) { recordPanelError(error); localError = error.message; render(); return; }
   return run('start',{tabId:target?.id,quality:$('quality').value,monitorAudio:$('monitor-audio').checked});
 });
 $('stop').addEventListener('click',()=>run('stop'));
 $('retry').addEventListener('click',async()=>{
   try { await OutputFolder.authorized(folderHandle,true); }
-  catch (error) { localError = error.message; render(); return; }
+  catch (error) { recordPanelError(error); localError = error.message; render(); return; }
   return run('download');
 });
 $('save-segments').addEventListener('click',async()=>{
   try { await OutputFolder.authorized(folderHandle,true); }
-  catch (error) { localError = error.message; render(); return; }
+  catch (error) { recordPanelError(error); localError = error.message; render(); return; }
   return run('save-segments');
+});
+window.addEventListener('error',event=>{void command('diagnostic-ui',{error:event.message}).catch(()=>{});});
+window.addEventListener('unhandledrejection',event=>{void command('diagnostic-ui',{error:String(event.reason?.message || event.reason)}).catch(()=>{});});
+$('diagnostic-mark').disabled = $('diagnostic-clear').disabled = preview;
+$('diagnostic-mark').addEventListener('click',async()=>{
+  try { await command('diagnostic-mark',{note:$('diagnostic-note').value}); $('diagnostic-feedback').textContent='已記下時間與目前狀況。請匯出診斷紀錄，連同問題描述提供排查。'; }
+  catch(error){$('diagnostic-feedback').textContent=error.message;}
+});
+$('diagnostic-clear').addEventListener('click',async()=>{
+  if(!confirm('確定清除診斷紀錄？不會刪除錄影。'))return;
+  try {await command('diagnostic-clear');$('diagnostic-feedback').textContent='診斷紀錄已清除。';}
+  catch(error){$('diagnostic-feedback').textContent=error.message;}
 });
 $('diagnostics').disabled = preview;
 $('diagnostics').addEventListener('click',async()=>{
   try {
     const report = await command('diagnostics');
     const url = URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
-    const link = document.createElement('a'); link.href = url; link.download = '錄影機錯誤紀錄.json'; link.click();
+    const link = document.createElement('a'); link.href = url; link.download = `直播錄影機診斷-${new Date().toISOString().replace(/[:.]/g,'-')}.json`; link.click();
     setTimeout(()=>URL.revokeObjectURL(url),10000);
-  } catch (error) { localError = error.message; render(); }
+  } catch (error) { recordPanelError(error); localError = error.message; render(); }
 });
 $('discard').addEventListener('click',()=>{if(confirm('確定刪除尚未儲存的暫存影片？'))run('discard')});
 $('locate').addEventListener('click',async()=>{

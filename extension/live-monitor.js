@@ -59,6 +59,13 @@ function checkLive() { return liveLocked(async()=>{
     const result = await chrome.scripting.executeScript({target:{tabId:m.tabId},func:probeLivePage,args:[m.hostId,m.knownRoom]});
     const sample = result[0]?.result || {kind:'unknown'};
     const next = LiveDetector.decision(sample,m);
+    if(['unknown','wrong-page','wrong-host','blocked'].includes(sample.kind) && typeof diagnosticPageSnapshot === 'function') {
+      try {
+        const snapshot=await chrome.scripting.executeScript({target:{tabId:m.tabId},func:diagnosticPageSnapshot});
+        await traceEvent('直播判斷結構摘要',{tabId:m.tabId,kind:sample.kind,evidence:JSON.stringify(snapshot[0]?.result || {})});
+      }catch(error){await traceEvent('無法擷取診斷摘要',{tabId:m.tabId,error:error.message});}
+    }
+    if(typeof traceEvent === 'function') await traceEvent('直播檢查',{hostId:m.hostId,tabId:m.tabId,kind:sample.kind,action:next.action,detail:sample.detail,endedCount:next.endedCount,phase:status.phase,armed:status.armed});
     const recording = ['recording','rotating'].includes(status.phase);
     m.lastCheck = Date.now(); m.endedCount = next.endedCount;
     if (['wrong-page','wrong-host'].includes(sample.kind)) {
@@ -80,6 +87,7 @@ function checkLive() { return liveLocked(async()=>{
         }
       }
       m.recordingCheck = {tabId:m.tabId,hostId:m.hostId,checkedAt:Date.now(),ownerProof:sample.ownerProof || '已確認的主播來源'};
+      if(typeof traceEvent === 'function' && !recording) await traceEvent('自動錄影來源已核對',{hostId:m.hostId,tabId:m.tabId,sourceTabId:status.armedTabId,detail:sample.ownerProof});
       m.message = '正在自動錄影；每分鐘檢查直播是否結束。';
     } else if (next.action === 'open' && !recording) {
       if (!LiveDetector.room(sample.url,m.hostId) || new URL(sample.url).origin !== new URL(m.profileUrl).origin) throw new Error('直播入口與指定主播不符。');
@@ -115,6 +123,7 @@ function checkLive() { return liveLocked(async()=>{
     await saveLive(m);
   } catch (error) {
     // A failed check must never delete footage or mean the broadcaster is offline.
+    if(typeof traceEvent === 'function') await traceEvent('直播流程錯誤',{hostId:m.hostId,tabId:m.tabId,error:error.message});
     m.message = `需要注意：${error.message}`; m.lastCheck = Date.now(); m.endedCount = 0;
     if (!pageObserved) await reportLiveSample({kind:'unknown',detail:error.message},{hostId:m.hostId,tabId:m.tabId});
     await saveLive(m);
@@ -134,6 +143,7 @@ function adoptOpenedLiveTab(tabId) { return liveLocked(async()=>{
   m.message='直播另開的分頁已導回原擷取分頁，正在核對主播及影片播放。';
   await saveLive(m);
   await chrome.tabs.remove(tabId);
+  if(typeof traceEvent === 'function') await traceEvent('直播新分頁導回原分頁',{hostId:m.hostId,tabId:m.tabId,sourceTabId:tabId});
 }); }
 function setupLiveMonitor() {
   chrome.alarms.onAlarm.addListener(alarm=>{if (alarm.name === 'live-monitor') void checkLive();});

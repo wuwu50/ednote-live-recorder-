@@ -1,4 +1,4 @@
-importScripts('updates.js','audio-routing.js','installed-update.js','toolbar-status.js','live-detector.js','live-status.js','live-monitor.js');
+importScripts('diagnostics.js','updates.js','audio-routing.js','installed-update.js','toolbar-status.js','live-detector.js','live-status.js','live-monitor.js');
 let starting = false;
 let creating = null;
 let diagnosticWrites = Promise.resolve();
@@ -24,6 +24,20 @@ async function offscreen(type, extra = {}) {
   return response.data;
 }
 async function handle(message) {
+  const tracked=['live-arm','live-disarm','live-capture-ended','verify-folder','start','stop','download','save-segments','discard'];
+  const track=tracked.includes(message.type);
+  if(track) await traceEvent('操作開始',{action:message.type,tabId:message.tabId});
+  try {
+    const result=await handleCommand(message);
+    if(track) await traceEvent('操作完成',{action:message.type,tabId:message.tabId,phase:result?.phase,ready:result?.ready});
+    return result;
+  } catch(error) {
+    await traceEvent('操作失敗',{action:message.type,tabId:message.tabId,error:error.message});
+    throw error;
+  }
+}
+let lastDiagnosticState='';
+async function handleCommand(message) {
   switch (message.type) {
     case 'live-status': return liveStatus();
     case 'live-arm': return armLive(message);
@@ -60,13 +74,29 @@ async function handle(message) {
       void checkForInstalledUpdate();
       return result;
     }
-    case 'diagnostics':
-      await diagnosticWrites;
-      return {version:chrome.runtime.getManifest().version,exportedAt:new Date().toISOString(),entries:(await chrome.storage.local.get('diagnostics')).diagnostics || []};
+    case 'diagnostics': await handleCommand({type:'diagnostic-mark',note:'匯出時的目前狀況'}); return diagnosticReport();
+    case 'diagnostic-mark': {
+      const m=await liveStatus();
+      const target=m.enabled ? m.tabId : (await chrome.storage.session.get('panelTarget')).panelTarget?.id;
+      let evidence='沒有指定分頁';
+      if(target)try {
+        const tab=await chrome.tabs.get(target);
+        if(!LiveDetector.allowed(tab.url))throw Error('目前分頁不在支援網站');
+        const result=await chrome.scripting.executeScript({target:{tabId:target},func:diagnosticPageSnapshot});
+        evidence=JSON.stringify(result[0]?.result || {});
+      }catch(error){evidence=error.message;}
+      await traceEvent('使用者標記異常',{tabId:target,hostId:m.hostId,note:message.note,evidence,detail:m.message});
+      return {recorded:true};
+    }
+    case 'diagnostic-clear':
+      await traceWrites; await diagnosticWrites;
+      await chrome.storage.local.set({workflowDiagnostics:[],diagnostics:[]});
+      return null;
+    case 'diagnostic-ui': await traceEvent('控制視窗錯誤',{error:message.error}); return null;
     case 'diagnostic': {
       const entry = message.entry || {};
       // Keep only recording metrics and errors; never store page titles or URLs.
-      const clean = {time:String(entry.time || ''),reason:String(entry.reason || '').slice(0,2000),phase:String(entry.phase || ''),bytes:Number(entry.bytes) || 0,queuedBytes:Number(entry.queuedBytes) || 0,partNumber:Number(entry.partNumber) || 1,partBytes:Number(entry.partBytes) || 0,captureFormat:String(entry.captureFormat || ''),requestedFps:Number(entry.requestedFps) || 0};
+      const clean = {time:String(entry.time || ''),reason:diagnosticText(entry.reason),phase:String(entry.phase || ''),bytes:Number(entry.bytes) || 0,queuedBytes:Number(entry.queuedBytes) || 0,partNumber:Number(entry.partNumber) || 1,partBytes:Number(entry.partBytes) || 0,captureFormat:String(entry.captureFormat || ''),requestedFps:Number(entry.requestedFps) || 0};
       diagnosticWrites = diagnosticWrites.catch(() => {}).then(async () => {
         const entries = (await chrome.storage.local.get('diagnostics')).diagnostics || [];
         await chrome.storage.local.set({diagnostics:[...entries,clean].slice(-40)});
@@ -95,10 +125,17 @@ async function handle(message) {
     case 'download': return offscreen('download',{jobId:message.jobId});
     case 'save-segments': return offscreen('save-segments',{jobId:message.jobId});
     case 'discard': return offscreen('discard',{jobId:message.jobId});
-    case 'state':
+    case 'state': {
+      const state=message.recorderState || {phase:message.phase,error:message.error};
+      const signature=JSON.stringify({phase:state.phase,error:state.error,preparing:state.preparing,jobs:state.jobs});
+      if(signature !== lastDiagnosticState) {
+        lastDiagnosticState=signature;
+        await traceEvent('錄影或存檔狀態',{phase:state.phase,error:state.error,jobs:JSON.stringify(state.jobs || [])});
+      }
       await chrome.storage.local.set({lastError:message.error || ''});
       void ToolbarStatus.record(message.recorderState || {phase:message.phase,error:message.error}).catch(()=>{});
       return null;
+    }
     case 'save-file': {
       const id = await chrome.downloads.download({url:message.url,filename:message.filename,saveAs:message.saveAs !== false});
       await chrome.storage.local.set({pendingDownload:id});

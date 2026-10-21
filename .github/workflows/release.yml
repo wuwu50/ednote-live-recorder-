@@ -25,7 +25,7 @@ jobs:
             node --check $_.FullName
             if ($LASTEXITCODE -ne 0) { throw "Syntax failed: $($_.Name)" }
           }
-          foreach ($test in @('test-recorder','test-updates','test-audio-routing','test-background','test-merge','test-save-queue','test-installed-update','test-live-monitor','test-standby','test-live-status','test-popup','test-output-folder','test-toolbar-status')) {
+          foreach ($test in @('test-recorder','test-updates','test-audio-routing','test-background','test-merge','test-save-queue','test-installed-update','test-live-monitor','test-standby','test-live-status','test-popup','test-output-folder','test-toolbar-status','test-diagnostics')) {
             node "tests/$test.cjs"
             if ($LASTEXITCODE -ne 0) { throw "Test failed: $test" }
           }

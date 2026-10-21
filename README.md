@@ -2,7 +2,15 @@
 
 獨立於 [chrome-tab-recorder](https://github.com/wuwu50/chrome-tab-recorder) 的新專案。指定主播監控、確認直播播放後自動錄影、連續確認下播後背景合併為一部 MP4，然後回到主播個人頁繼續待命。
 
-**0.4.0 是實驗版：錄影／待命生命週期及模擬頁面有測試；尚未完成真實小紅書主播開播到下播的端到端驗證。** 網站改版、驗證或沒有公開直播入口時，會顯示未知／需要注意，不宣稱主播未開播。第一版只支援一位主播、一個保留的分頁。
+**0.5.0 是實驗版：錄影／待命生命週期及模擬頁面有測試；尚未完成真實小紅書主播開播到下播的端到端驗證。** 網站改版、驗證或沒有公開直播入口時，會顯示未知／需要注意，不宣稱主播未開播。第一版只支援一位主播、一個保留的分頁。
+
+## 問題排查紀錄
+
+自動記錄待命操作、每次直播判斷與處理動作、分頁導回、錄影來源核對、錄影／背景存檔狀態與錯誤。流程紀錄最多 500 筆、七天；錄影指標另保留最近 40 筆，存於本機，重開 Chrome 後仍可匯出，不自動上傳。
+
+遇到問題時，到控制視窗下方「問題排查紀錄」，填入簡短描述（選填），按「記下目前異常」，再按「匯出診斷紀錄」。JSON 檔可連同問題發生時間、預期行為和實際情況提供排查。匯出時也會自動記下目前頁面結構數量及播放器就緒狀態；不擷取頁面文字、截圖、影片或 cookies。
+
+網址查詢參數、token 及本機路徑會遮蔽；請勿在問題描述輸入密碼。可按「清除紀錄」刪除診斷資料，不影響錄影及救援片段。診斷儲存失敗不會中斷錄影；沒有紀錄不能當作沒有發生問題。
 
 ## 工具列即時狀態
 
@@ -29,7 +37,7 @@
 
 ## 安裝及使用
 
-Windows 10／11、Chrome 116 以上。下載本專案 Release 的 `RednoteLiveRecorder-0.4.0-Setup.exe` 安裝；若尚未發布 Release，可下載原始碼 ZIP 並解壓縮。
+Windows 10／11、Chrome 116 以上。下載本專案 Release 的 `RednoteLiveRecorder-0.5.0-Setup.exe` 安裝；若尚未發布 Release，可下載原始碼 ZIP 並解壓縮。
 
 1. 在 Chrome 開啟 `chrome://extensions`，啟用「開發人員模式」，選「載入未封裝項目」，選取本專案的 `extension` 資料夾。釘選「小紅書直播錄影機」。
 2. 開啟主播個人頁，點工具列圖示，直接開啟唯一的控制視窗。右側選擇儲存資料夾並允許存取，等待「背景寫入檢查已通過」。
@@ -76,6 +84,7 @@ node tests/test-live-status.cjs
 node tests/test-popup.cjs
 node tests/test-output-folder.cjs
 node tests/test-toolbar-status.cjs
+node tests/test-diagnostics.cjs
 node tests/test-live-monitor.cjs
 node tests/test-standby.cjs
 node tests/test-recorder.cjs

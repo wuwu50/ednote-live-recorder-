@@ -6,7 +6,7 @@ const source=fs.readFileSync('extension/background.js','utf8');
  const local={},items=new Map(),finished=[];
  const command=(type,extra={})=>new Promise(resolve=>listener({target:'background',type,...extra},{id:'test'},resolve));
  const context=vm.createContext({
-  importScripts(){},setupLiveMonitor(){},checkForInstalledUpdate:async()=>false,setupInstalledUpdateWatch(){},updateReloading:false,restoreCapturedAudio:async()=>{restorations++},setTimeout,Date,Promise,
+  liveStatus:async()=>({enabled:false}),importScripts(){},setupLiveMonitor(){},checkForInstalledUpdate:async()=>false,setupInstalledUpdateWatch(){},updateReloading:false,restoreCapturedAudio:async()=>{restorations++},setTimeout,Date,Promise,
   chrome:{
    runtime:{id:'test',getURL:p=>p,getManifest:()=>({version:'1.8.0'}),getContexts:async()=>created?[{}]:[],onStartup:{addListener(){}},onMessage:{addListener(fn){listener=fn}},
     async sendMessage(message){
@@ -29,6 +29,7 @@ const source=fs.readFileSync('extension/background.js','utf8');
   }
  });
  vm.runInContext(fs.readFileSync('extension/toolbar-status.js','utf8'),context);
+ vm.runInContext(fs.readFileSync('extension/diagnostics.js','utf8'),context);
  vm.runInContext(source,context);
  const statuses=await Promise.all([command('status'),command('status')]);
  assert(statuses.every(result=>result.ok && result.data.phase==='ready'));assert.equal(creations,1);assert.equal(restorations,1);
