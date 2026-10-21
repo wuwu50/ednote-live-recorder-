@@ -1,7 +1,7 @@
 {
-  "version": "0.5.0",
-  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.5.0/RednoteLiveRecorder-0.5.0-Setup.exe",
-  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.5.0/RednoteLiveRecorder-0.5.0.zip",
-  "notes": "# 0.5.0 · 本機診斷紀錄\n\n- 自動記錄直播判斷、跳轉、錄影來源核對、待命操作、錄影與存檔狀態及錯誤。\n- 新增「記下目前異常」、選填問題描述、「匯出診斷紀錄」與「清除紀錄」。匯出同時附上頁面結構數量及播放器狀態。\n- 流程紀錄最多保留 500 筆／七天，重開 Chrome 後可匯出；不自動上傳。\n- 遮蔽網址參數、token、本機路徑，不記錄網頁內容、影片或 cookies；紀錄儲存失敗不阻斷錄影。\n",
-  "sha256": "aa5d0c09c8f988443cb7bf1bdcd95b4c1a345b881c2c566b80cf8b48447c1438"
+  "version": "0.5.1",
+  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.5.1/RednoteLiveRecorder-0.5.1-Setup.exe",
+  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.5.1/RednoteLiveRecorder-0.5.1.zip",
+  "notes": "# 0.5.1 · 修正主頁無提示誤判，支援本場直播連結\n\n- 移除「完整主頁無直播提示即判未開播」的推論。缺少提示一律顯示無法確認，只有明確未開播／結束訊號才顯示未。\n- 新增貼上本場直播分享連結，在原指定分頁開啟；待命中核對主播、擷取分頁及播放器後錄影。\n- 拒絕錯誤主播、非支援網站與錄影中換連結；支援 rednote／xiaohongshu 兩個網站間導覽，沿用原授權擷取。\n- 每場連結可能改變，不宣稱本場連結能偵測下次開播。真實直播頁仍需使用者端確認播放與診斷紀錄。\n",
+  "sha256": "6f1515f259e70a37ccf17804bc5845345a635e665b7e506afd22665119149176"
 }
