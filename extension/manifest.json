@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "小紅書直播錄影機",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "指定小紅書主播開播監控、啟用待命後自動錄製分頁影音及本機 MP4 儲存。",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -12,7 +12,8 @@
     "storage",
     "unlimitedStorage",
     "alarms",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   "optional_host_permissions": [
     "https://*/*"

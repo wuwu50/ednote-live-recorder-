@@ -12,10 +12,16 @@
     <strong>指定主播自動錄影 · 測試版</strong>
     <label for="host-id">主播帳號 ID</label>
     <input id="host-id" value="5f0c0b43000000000101fb9c" maxlength="24" style="width:100%;box-sizing:border-box">
+    <div class="live-observation" aria-live="polite">
+      <strong id="live-state" data-state="unknown">尚未檢查直播狀態</strong>
+      <p id="live-detail">開啟主播頁面即可檢查，不需要先啟用錄影。</p>
+      <p id="live-checked-at">尚無檢查時間</p>
+      <p id="live-notification-error" role="status"></p>
+    </div>
+    <button id="live-check" class="secondary">檢查目前直播狀態並通知</button>
     <p id="live-status" role="status">尚未啟用待命</p>
     <button id="live-arm">啟用目前分頁待命</button>
     <button id="live-disarm" class="secondary">解除待命並儲存</button>
-    <button id="live-check" class="secondary">立即檢查開播</button>
     <p class="note">先在獨立控制視窗選好儲存資料夾，再回到此主播個人頁點工具列圖示啟用。待命會持續擷取分頁，只有開播才寫入影片。不要關閉或挪用此分頁；重開 Chrome 後需重新啟用。</p>
   </div>
   <div class="card">

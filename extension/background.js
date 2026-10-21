@@ -1,4 +1,4 @@
-importScripts('updates.js','audio-routing.js','installed-update.js','live-detector.js','live-monitor.js');
+importScripts('updates.js','audio-routing.js','installed-update.js','live-detector.js','live-status.js','live-monitor.js');
 let starting = false;
 let creating = null;
 let diagnosticWrites = Promise.resolve();
@@ -33,6 +33,7 @@ async function handle(message) {
     case 'live-arm': return armLive(message);
     case 'live-disarm': return disarmLive();
     case 'live-check': await checkLive(); return liveStatus();
+    case 'live-inspect': return inspectLiveNow(message);
     case 'live-capture-ended': return disarmLive('分頁擷取中斷，請重新啟用待命。');
     case 'prepare-audio': return prepareCapturedAudio(message.tabId);
     case 'restore-audio': await restoreCapturedAudio(); return null;

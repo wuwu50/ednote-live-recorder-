@@ -51,6 +51,7 @@ function probeLivePage(hostId, knownRoom = '') {
     u.searchParams.set('host_id',hostId);
     return {kind:'live-link',url:u.href};
   }
+  if (/当前未开播|目前未開播|暂未开播|暫未開播|暂未直播|暫未直播|主播未开播|主播未開播/.test(text)) return {kind:'offline'};
   return {kind:'unknown'};
 }
 if (typeof module !== 'undefined') module.exports = {LiveDetector,probeLivePage};

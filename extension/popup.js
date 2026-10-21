@@ -10,11 +10,19 @@ async function refresh() {
   try {
     const s = await command('status');
     const live = await command('live-status');
+    const observation = live.observation;
+    const inputHost = $('host-id').value.trim().toLowerCase();
+    const relevant = observation && observation.hostId === inputHost;
+    const stale = relevant && Date.now() - observation.checkedAt > 120000;
+    $('live-state').textContent = relevant ? observation.label + (stale ? '（待重新確認）' : '') : '尚未檢查直播狀態';
+    $('live-state').dataset.state = relevant && !stale ? observation.state : 'unknown';
+    $('live-detail').textContent = relevant ? observation.detail : '開啟主播頁面即可檢查，不需要先啟用錄影。';
+    $('live-checked-at').textContent = relevant ? `主播 ${observation.hostId} · 最後檢查：${new Date(observation.checkedAt).toLocaleString('zh-TW')}` : '尚無檢查時間';
+    $('live-notification-error').textContent = relevant ? observation.notificationError || '' : '';
     $('live-status').textContent = live.message || '尚未啟用待命';
-    if (document.activeElement !== $('host-id')) $('host-id').value = live.hostId || '5f0c0b43000000000101fb9c';
     $('live-arm').disabled = !!s.armed || !['idle','error'].includes(s.phase);
     $('live-disarm').disabled = !live.enabled && !s.armed;
-    $('live-check').disabled = !live.enabled;
+    $('live-check').disabled = false;
     const names = {idle:'尚未開始',starting:'準備錄製…',recording:'● 錄製中',saving:'正在儲存…',ready:'影片已暫存，請儲存',downloading:'正在下載影片…',error:'錄影發生錯誤'};
     const pending = (s.jobs || []).length;
     $('status').textContent = s.phase === 'idle' && pending ? `背景處理 ${pending} 部影片，可開始下一次錄影` : names[s.phase] || s.phase;
@@ -34,7 +42,7 @@ async function refresh() {
 async function run(type, extra = {}) {
   busy = true;
   let operationError = '';
-  for (const id of ['start','stop','retry','discard']) $(id).disabled = true;
+  for (const id of ['start','stop','retry','discard','live-check','live-arm','live-disarm']) $(id).disabled = true;
   $('error').textContent = '';
   try { await command(type, extra); }
   catch (error) { operationError = error.message; }
@@ -69,4 +77,10 @@ $('live-arm').addEventListener('click',async()=>{
   await run('live-arm',{tabId:tab?.id,hostId:$('host-id').value.trim()});
 });
 $('live-disarm').addEventListener('click',()=>run('live-disarm'));
-$('live-check').addEventListener('click',()=>run('live-check'));
+$('live-check').addEventListener('click',async()=>{
+  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+  await run('live-inspect',{tabId:tab?.id,hostId:$('host-id').value.trim()});
+});
+command('live-status').then(live=>{
+  if (document.activeElement !== $('host-id')) $('host-id').value = live.observation?.hostId || live.hostId || '5f0c0b43000000000101fb9c';
+}).catch(()=>{});

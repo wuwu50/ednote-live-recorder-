@@ -39,6 +39,7 @@ console.log('PASS: hostname/owner validation, explicit live link, ended preceden
       tabs:{get:async()=>tab,update:async(_,v)=>{Object.assign(tab,v)},reload:async()=>{actions.push('reload')}},
       tabCapture:{getMediaStreamId:async()=>{actions.push('capture-grant');return 'one-use'}},
       alarms:{create:async()=>{},clear:async()=>{}},scripting:{executeScript:async()=>[{result:sample}]}}});
+  vm.runInContext(fs.readFileSync('extension/live-status.js','utf8'),ctx);
   vm.runInContext(fs.readFileSync('extension/live-monitor.js','utf8'),ctx);
   const call=(s)=>vm.runInContext(s,ctx);
   await call(`armLive({hostId:'${id}',tabId:7})`);
