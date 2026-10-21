@@ -1,0 +1,40 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const id='5f0c0b43000000000101fb9c';
+const image='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const header=extra=>`<div class="user-info"><div class="user-avatar" role="button"><img width="60" height="60" src="${image}">${extra}</div><div class="user-name">指定主播</div><div class="user-desc">介紹內容</div></div><div class="reds-tabs-list">筆記 收藏</div>`;
+const feed=extra=>`<div class="feeds-container"><section class="note-item">${extra}</section></div>`;
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+ try{
+  const page=await browser.newPage();await page.route('https://www.rednote.com/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><body></body>'}));
+  await page.goto(`https://www.rednote.com/user/profile/${id}`);
+  await page.addScriptTag({content:fs.readFileSync('extension/live-detector.js','utf8')});
+  await page.evaluate(()=>{window.clock=100000;Date.now=()=>clock});
+  const set=async html=>{await page.evaluate(html=>{document.body.innerHTML=html},html);await page.waitForFunction(()=>[...document.images].every(img=>img.complete));};
+  const probe=()=>page.evaluate(id=>probeLivePage(id),id);
+  await set(header('')+feed('<span class="title">昨天直播回顧</span>'));
+  assert.equal((await probe()).kind,'profile-pending');await page.evaluate(()=>clock+=6000);
+  let result=await probe();assert.equal(result.kind,'offline');assert.equal(result.inferred,true);
+  await set(header('<span class="live-badge">直播中</span>')+feed('普通筆記'));
+  result=await probe();assert.equal(result.kind,'live-indicator');assert(result.entryToken);
+  await page.evaluate(()=>{document.querySelector('.user-avatar').addEventListener('click',()=>{window.entryClicked=true})});
+  assert(await page.evaluate(({id,token})=>clickProfileLiveEntry(id,token),{id,token:result.entryToken}));assert(await page.evaluate(()=>entryClicked));
+  await set('<div class="user-page">'+header('')+'<div class="live-banner" role="button">主播正在直播中，點擊進入直播間</div>'+feed('筆記')+'</div>');
+  assert.equal((await probe()).kind,'live-indicator','top profile banner is a live signal');
+  await set(header('')+feed('<button class="live-card"><span class="live-tag">LIVE</span></button>'));
+  result=await probe();assert.equal(result.kind,'live-indicator');assert(result.entryToken);
+  await set(header('')+feed('<div class="title">我的 LIVE 直播回顧</div>'));
+  assert.notEqual((await probe()).kind,'live-indicator','historical note title must not be live');
+  await set(header('')+feed('<div style="display:none"><span class="live-badge">直播中</span></div>'));
+  assert.notEqual((await probe()).kind,'live-indicator','hidden templates are not live');
+  await set(header('<span class="avatar-live-ring">圈</span>')+feed('筆記'));
+  assert.equal((await probe()).kind,'unknown','ring alone is inconclusive');
+  await set('<h1>安全验证</h1>');assert.equal((await probe()).kind,'blocked');
+  await set('<h1>載入中</h1>');assert.equal((await probe()).kind,'unknown');
+  await set(header('')+feed('<span>筆記</span>')+'<div aria-busy="true">載入中</div>');assert.equal((await probe()).kind,'unknown');
+  await set(header('<a href="/livestream/test/123?host_id='+id+'"><span>直播中</span></a>')+feed('筆記'));
+  assert.equal((await probe()).kind,'live-link');
+  console.log('PASS: actual Chrome DOM avatar/LIVE/first-card cues, clickable entry, stable complete-profile offline inference, hidden templates, old note text, rings, loading and verification guards.');
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exitCode=1});

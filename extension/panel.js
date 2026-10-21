@@ -247,6 +247,7 @@ function renderLiveControls() {
   $('live-checked-at').textContent = relevant ? `最後檢查：${new Date(observation.checkedAt).toLocaleString('zh-TW')}` : '尚無檢查時間';
   $('live-notification-error').textContent = relevant ? observation.notificationError || '' : '';
   $('live-status').textContent = liveState.message || '尚未啟用待命';
+  $('live-target-check').textContent = ['recording','rotating'].includes(state.phase) && liveState.recordingCheck ? `錄影來源已核對：主播 ${liveState.recordingCheck.hostId}／分頁 ${liveState.recordingCheck.tabId}／${liveState.recordingCheck.ownerProof}` : '自動錄影前會核對主播、原擷取分頁與影片播放。';
   $('live-arm').disabled = preview || busy || folderLoading || !folderReady || !target || state.armed || liveState.enabled || !['idle','error'].includes(state.phase);
   $('live-arm').textContent = pendingOperation === 'live-arm' ? '正在啟用待命…' : '啟用指定分頁待命';
   $('live-disarm').disabled = preview || busy || (!state.armed && !liveState.enabled);

@@ -1,4 +1,5 @@
 let liveWork = Promise.resolve();
+let profileRetryScheduled = false;
 function liveLocked(fn) { const work = liveWork.then(fn); liveWork = work.catch(()=>{}); return work; }
 async function liveStatus() {
   const monitor = (await chrome.storage.session.get('liveMonitor')).liveMonitor || {enabled:false,message:'尚未啟用待命'};
@@ -44,6 +45,11 @@ function checkLive() { return liveLocked(async()=>{
     const status = await offscreen('status');
     if (!status.armed || status.armedTabId !== m.tabId) throw new Error('擷取已中斷，請解除後重新啟用。');
     const tab = await chrome.tabs.get(m.tabId);
+    if (m.followingProfileEntry && Date.now() - m.followingProfileEntry < 30000 && LiveDetector.allowed(tab.url) && new URL(tab.url).pathname.startsWith('/livestream/')) {
+      const owner = new URL(tab.url).searchParams.get('host_id');
+      if (owner && owner !== m.hostId) throw new Error('直播入口導向了其他主播，請手動確認。');
+      m.knownRoom = tab.url; m.profileUrl = `${new URL(tab.url).origin}/user/profile/${m.hostId}`; m.followingProfileEntry = 0;
+    }
     if (!LiveDetector.allowed(tab.url) || new URL(tab.url).origin !== new URL(m.profileUrl).origin) {
       await offscreen('disarm-capture'); await chrome.alarms.clear('live-monitor');
       await reportLiveSample({kind:'unknown',detail:'監控分頁已離開原網站，請重新檢查指定主播頁面。'},{hostId:m.hostId,tabId:m.tabId});
@@ -55,9 +61,9 @@ function checkLive() { return liveLocked(async()=>{
     const next = LiveDetector.decision(sample,m);
     const recording = ['recording','rotating'].includes(status.phase);
     m.lastCheck = Date.now(); m.endedCount = next.endedCount;
-    if (sample.kind === 'wrong-page') {
+    if (['wrong-page','wrong-host'].includes(sample.kind)) {
       await offscreen('disarm-capture'); await chrome.alarms.clear('live-monitor');
-      await reportLiveSample({kind:'unknown',detail:'分頁已離開指定主播，先前結果不代表目前狀態。'},{hostId:m.hostId,tabId:m.tabId});
+      await reportLiveSample({kind:'unknown',detail:sample.detail || '分頁已離開指定主播，先前結果不代表目前狀態。'},{hostId:m.hostId,tabId:m.tabId});
       await saveLive({...m,enabled:false,message:'分頁已離開指定主播，已停止錄影；請重新啟用待命。'}); return;
     }
     await reportLiveSample(sample,{hostId:m.hostId,tabId:m.tabId,confirmedEnd:next.action === 'ended'});
@@ -67,23 +73,42 @@ function checkLive() { return liveLocked(async()=>{
     } else if (next.action === 'record') {
       if (!recording) {
         if (status.jobs?.some(j=>j.error || j.phase === 'ready')) throw new Error('有尚未儲存的影片，請先在獨立控制視窗處理。');
-        await offscreen('start',{useArmed:true,tabId:m.tabId,title:`小紅書 ${m.hostId}`,filenamePrefix:`小紅書-${m.hostId}`,mergeAfterStop:true});
+        const started = await offscreen('start',{useArmed:true,tabId:m.tabId,title:`小紅書 ${m.hostId}`,filenamePrefix:`小紅書-${m.hostId}`,mergeAfterStop:true});
+        if (started.tabId !== m.tabId || started.armedTabId !== m.tabId || !['recording','rotating'].includes(started.phase)) {
+          if (['recording','rotating'].includes(started.phase)) await offscreen('stop');
+          throw new Error('錄影回報的分頁與指定直播來源不一致，已停止並保留片段。');
+        }
       }
+      m.recordingCheck = {tabId:m.tabId,hostId:m.hostId,checkedAt:Date.now(),ownerProof:sample.ownerProof || '已確認的主播來源'};
       m.message = '正在自動錄影；每分鐘檢查直播是否結束。';
     } else if (next.action === 'open' && !recording) {
-      if (!LiveDetector.belongs(sample.url,m.hostId) || new URL(sample.url).origin !== new URL(m.profileUrl).origin) throw new Error('直播入口與指定主播不符。');
+      if (!LiveDetector.room(sample.url,m.hostId) || new URL(sample.url).origin !== new URL(m.profileUrl).origin) throw new Error('直播入口與指定主播不符。');
       m.knownRoom = sample.url; m.lastNavigation = Date.now();
       await chrome.tabs.update(m.tabId,{url:sample.url});
       m.message = '發現直播入口，等待直播開始播放；若未自動播放請打開分頁按播放。';
+    } else if (next.action === 'click' && !recording) {
+      if (!m.lastEntryAttempt || Date.now() - m.lastEntryAttempt > 60000) {
+        m.followingProfileEntry = Date.now();
+        const clicked = await chrome.scripting.executeScript({target:{tabId:m.tabId},func:clickProfileLiveEntry,args:[m.hostId,sample.entryToken]});
+        m.lastEntryAttempt = Date.now();
+        if (clicked[0]?.result) m.followingProfileEntry = Date.now();
+      }
+      m.message = '主頁顯示直播中，已嘗試點擊入口；若另開分頁，將導回已授權擷取的原分頁。';
     } else if (next.action === 'ended') {
       if (recording) await offscreen('stop');
       m.message = '連續兩次確認下播，已停止並背景儲存；返回主播頁繼續待命。';
       m.knownRoom = ''; m.endedCount = 0; m.lastNavigation = Date.now();
       await chrome.tabs.update(m.tabId,{url:m.profileUrl});
     } else {
-      m.message = recording ? '錄影持續中；目前未確認下播（可能緩衝或頁面變更）。' : sample.kind === 'ended' ? '第一次確認下播，等待再次確認。' : sample.kind === 'offline' ? '已確認目前未開播，繼續待命。' : '待命中；目前沒有可確認的直播訊號。';
+      m.message = recording ? '錄影持續中；目前未確認下播（可能緩衝或頁面變更）。' : sample.kind === 'ended' ? '第一次確認下播，等待再次確認。' : sample.kind === 'offline' ? '主頁判讀目前未開播，繼續待命。' : sample.kind === 'live-indicator' ? '主頁顯示直播中，但沒有可辨識的入口，請手動開啟直播。' : sample.kind === 'profile-pending' ? '主頁已載入，稍後再次確認直播標記。' : '待命中；目前沒有可確認的直播訊號。';
+      if (['profile-pending','room-pending'].includes(sample.kind) && !profileRetryScheduled && (m.pendingRetries || 0) < 6) {
+        m.pendingRetries = (m.pendingRetries || 0) + 1;
+        profileRetryScheduled = true;
+        setTimeout(()=>{profileRetryScheduled=false;void checkLive().catch(()=>{});},Math.min(6000,Math.max(1000,sample.retryAfterMs || 5200)));
+      }
+      if (!['profile-pending','room-pending'].includes(sample.kind)) m.pendingRetries = 0;
       // Refresh only the profile, never interrupt a live-room recording.
-      if (!recording && tab.url.startsWith(m.profileUrl) && Date.now() - m.lastNavigation >= 55000) {
+      if (!recording && sample.kind !== 'profile-pending' && tab.url.startsWith(m.profileUrl) && Date.now() - m.lastNavigation >= 55000) {
         await chrome.tabs.reload(m.tabId); m.lastNavigation = Date.now();
       }
     }
@@ -95,11 +120,28 @@ function checkLive() { return liveLocked(async()=>{
     await saveLive(m);
   }
 }); }
+function adoptOpenedLiveTab(tabId) { return liveLocked(async()=>{
+  const m = await liveStatus();
+  if (!m.enabled || !m.followingProfileEntry || Date.now() - m.followingProfileEntry > 30000 || tabId === m.tabId) return;
+  const opened = await chrome.tabs.get(tabId);
+  const url = opened.pendingUrl || opened.url;
+  if (opened.openerTabId !== m.tabId || !LiveDetector.room(url,m.hostId)) return;
+  const original = await chrome.tabs.get(m.tabId);
+  if (!LiveDetector.allowed(original.url)) return;
+  await chrome.tabs.update(m.tabId,opened.active ? {url,active:true} : {url});
+  m.knownRoom=url; m.profileUrl=`${new URL(url).origin}/user/profile/${m.hostId}`;
+  m.followingProfileEntry=0; m.lastNavigation=Date.now();
+  m.message='直播另開的分頁已導回原擷取分頁，正在核對主播及影片播放。';
+  await saveLive(m);
+  await chrome.tabs.remove(tabId);
+}); }
 function setupLiveMonitor() {
   chrome.alarms.onAlarm.addListener(alarm=>{if (alarm.name === 'live-monitor') void checkLive();});
   chrome.tabs.onUpdated.addListener((tabId,change)=>{
+    if (change.url || change.status === 'complete') void adoptOpenedLiveTab(tabId).catch(()=>{});
     if (change.status === 'complete') void liveStatus().then(m=>{if(m.enabled && m.tabId === tabId) return checkLive();});
   });
+  chrome.tabs.onCreated.addListener(tab=>{if (tab.openerTabId) void adoptOpenedLiveTab(tab.id).catch(()=>{});});
   chrome.tabs.onRemoved.addListener(tabId=>{
     void liveStatus().then(m=>{if(m.enabled && m.tabId === tabId) return disarmLive('監控分頁已關閉；已停止並嘗試儲存錄影，請重新啟用。');});
   });

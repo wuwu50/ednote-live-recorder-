@@ -3,7 +3,10 @@ const LIVE_STATUS_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABA
 function liveObservation(sample, confirmedEnd = false) {
   if (sample.kind === 'playing') return {state:'live',label:'直播中',detail:'已確認直播影片正在播放。'};
   if (sample.kind === 'live-link') return {state:'live',label:'直播中',detail:'主播頁顯示直播入口；尚未確認影片播放。'};
-  if (sample.kind === 'offline') return {state:'offline',label:'目前未開播',detail:'頁面明確顯示主播未開播。'};
+  if (sample.kind === 'live-indicator') return {state:'live',label:'直播中',detail:sample.detail || '主頁顯示直播標籤；尚未確認影片播放。'};
+  if (sample.kind === 'offline') return {state:'offline',label:'目前未開播',detail:sample.detail || '頁面明確顯示主播未開播。'};
+  if (sample.kind === 'profile-pending') return {state:'unknown',label:'正在確認主頁直播狀態',detail:sample.detail};
+  if (sample.kind === 'room-pending') return {state:'unknown',label:'等待直播影片播放',detail:sample.detail};
   if (sample.kind === 'ended' && confirmedEnd) return {state:'ended',label:'直播已結束',detail:'直播頁顯示直播已結束。'};
   if (sample.kind === 'ended') return {state:'unknown',label:'正在確認是否下播',detail:'第一次發現結束訊號，等待再次確認。'};
   if (sample.kind === 'blocked') return {state:'unknown',label:'目前無法確認',detail:'網站要求驗證，請在直播分頁處理。'};
@@ -41,6 +44,15 @@ function inspectLiveNow(message) { return liveLocked(async()=>{
     else {
       const result = await chrome.scripting.executeScript({target:{tabId:tab.id},func:probeLivePage,args:[hostId,tab.url]});
       sample = result[0]?.result || {kind:'unknown'};
+      if (sample.kind === 'profile-pending') {
+        await new Promise(resolve=>setTimeout(resolve,Math.min(6000,Math.max(1000,sample.retryAfterMs || 5200))));
+        const current = await chrome.tabs.get(tab.id);
+        if (current.url !== tab.url || current.status === 'loading') sample = {kind:'unknown',detail:'檢查期間頁面已變更，請重新檢查。'};
+        else {
+          const second = await chrome.scripting.executeScript({target:{tabId:tab.id},func:probeLivePage,args:[hostId,tab.url]});
+          sample = second[0]?.result || {kind:'unknown'};
+        }
+      }
     }
   } catch (_) { sample = {kind:'unknown',detail:'無法讀取目前頁面，請重新整理頁面後再檢查。'}; }
   await reportLiveSample(sample,{hostId,tabId:tab.id,confirmedEnd:true,forceNotify:true});

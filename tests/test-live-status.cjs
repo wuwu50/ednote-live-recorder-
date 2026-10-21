@@ -26,5 +26,10 @@ const id='5f0c0b43000000000101fb9c',url=`https://www.xiaohongshu.com/user/profil
  assert(notifications.every(n=>n.type==='basic'&&n.iconUrl.startsWith('data:image/png;base64,')&&n.message.includes(id)));
  const probe=text=>vm.runInNewContext(`(${probeLivePage})('${id}')`,{URL,location:{href:url},document:{body:{innerText:text},querySelectorAll:()=>[]}});
  assert.equal(probe('主播未开播').kind,'offline');assert.equal(probe('普通个人主页').kind,'unknown');
+ assert.equal((await report('live-indicator')).state,'live');
+ assert.equal((await report('profile-pending')).state,'unknown');
+ let reads=0;ctx.setTimeout=fn=>fn();
+ ctx.chrome.scripting.executeScript=async()=>[{result:++reads===1?{kind:'profile-pending',retryAfterMs:1}:{kind:'offline',detail:'依主頁畫面判讀'}}];
+ result=await inspect();assert.equal(reads,2);assert.equal(result.observation.state,'offline');assert(result.observation.detail.includes('主頁'));
  console.log('PASS: explicit current live/offline/ended/unknown, deduplicated notifications, manual checks without recording, blocked notifications and read failures.');
 })().catch(e=>{console.error(e);process.exitCode=1});
