@@ -66,9 +66,11 @@ async function handle(message) {
   await initialized;
   switch (message.type) {
     case 'status': return snapshot();
+    case 'folder-status': return OutputFolder.status();
+    case 'verify-folder': return OutputFolder.verify();
     case 'arm-preflight': {
       if (active || preparing || armedCapture) throw new Error('請先停止錄影或解除待命。');
-      if (!(await OutputFolder.authorized(await OutputFolder.stored()))) throw new Error('請先選擇儲存資料夾：按「設定／允許儲存資料夾」，選好後回主播頁再啟用待命。');
+      await OutputFolder.verify();
       return {folderReady:true};
     }
     case 'arm-capture': {

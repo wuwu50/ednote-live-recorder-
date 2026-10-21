@@ -1,7 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('extension/background.js','utf8');
 (async()=>{
- let listener,created=false,creations=0,restorations=0,downloadId=0;
+ let listener,actionListener,created=false,creations=0,restorations=0,downloadId=0,panelCreates=0,panelFocuses=0;
+ const session={};
  const local={},items=new Map(),finished=[];
  const command=(type,extra={})=>new Promise(resolve=>listener({target:'background',type,...extra},{id:'test'},resolve));
  const context=vm.createContext({
@@ -19,9 +20,10 @@ const source=fs.readFileSync('extension/background.js','utf8');
     }
    },
    offscreen:{async createDocument(){creations++;await new Promise(r=>setTimeout(r,5));created=true}},
-   storage:{local:{async get(key){return {[key]:local[key]}},async set(value){Object.assign(local,value)},async remove(key){delete local[key]}}},
-   action:{async setBadgeText(){},async setBadgeBackgroundColor(){}},
-   tabs:{onUpdated:{addListener(){}}},
+   storage:{session:{async get(key){return {[key]:session[key]}},async set(value){Object.assign(session,value)}},local:{async get(key){return {[key]:local[key]}},async set(value){Object.assign(local,value)},async remove(key){delete local[key]}}},
+   action:{onClicked:{addListener(fn){actionListener=fn}},async setBadgeText(){},async setBadgeBackgroundColor(){}},
+   windows:{async create(){panelCreates++;return {id:20}},async update(){panelFocuses++}},
+   tabs:{async get(id){return {id,title:'target',url:'https://www.rednote.com/user/profile/test'}},onUpdated:{addListener(){}}},
    downloads:{async download(options){assert.equal(options.saveAs,false);const id=++downloadId;items.set(id,{id,state:'complete'});return id},async search({id}){return [items.get(id)]},onChanged:{addListener(){}}}
   }
  });
@@ -37,5 +39,8 @@ const source=fs.readFileSync('extension/background.js','utf8');
  const report=(await command('diagnostics')).data;
  assert.equal(report.entries.length,40);assert.equal(report.entries[0].reason,'event 5');
  assert.equal(report.entries[0].partBytes,123);assert(!JSON.stringify(report).includes('private'));
+ actionListener({id:7});await new Promise(r=>setTimeout(r,10));
+ actionListener({id:8});await new Promise(r=>setTimeout(r,10));
+ assert.equal(panelCreates,1);assert.equal(panelFocuses,1);assert.equal(session.panelTarget.id,8,'toolbar refreshes target in the same controller');
  console.log('PASS: one offscreen recovery under parallel status calls, fast consecutive segment downloads, bounded private diagnostics.');
 })().catch(error=>{console.error(error);process.exitCode=1});

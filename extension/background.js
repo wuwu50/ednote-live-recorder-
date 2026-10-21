@@ -34,6 +34,8 @@ async function handle(message) {
     case 'live-disarm': return disarmLive();
     case 'live-check': await checkLive(); return liveStatus();
     case 'live-inspect': return inspectLiveNow(message);
+    case 'folder-status': await ensureOffscreen(); return offscreen('folder-status');
+    case 'verify-folder': await ensureOffscreen(); return offscreen('verify-folder');
     case 'live-capture-ended': return disarmLive('分頁擷取中斷，請重新啟用待命。');
     case 'prepare-audio': return prepareCapturedAudio(message.tabId);
     case 'restore-audio': await restoreCapturedAudio(); return null;
@@ -144,3 +146,6 @@ chrome.tabs.onUpdated.addListener((tabId,change) => {
 setupInstalledUpdateWatch();
 
 setupLiveMonitor();
+chrome.action.onClicked.addListener(tab=>{
+  handle({type:'open-panel',tabId:tab.id}).catch(error=>chrome.storage.local.set({lastError:error.message}));
+});
