@@ -1,7 +1,7 @@
 {
-  "version": "0.2.0",
-  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.2.0/RednoteLiveRecorder-0.2.0-Setup.exe",
-  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.2.0/RednoteLiveRecorder-0.2.0.zip",
-  "notes": "# 0.2.0 · 直播狀態顯示與桌面通知\n\n- 不用啟用錄影，即可手動檢查目前主播頁面並通知。\n- 顯示直播中、未開播、直播已結束或無法確認，以及判斷依據與檢查時間。\n- 待命中確認開播／下播時通知，相同狀態不重複提醒；緩衝不誤判為下播。\n- 通知被阻擋不影響錄影和介面結果。過期結果會標示待重新確認。\n- 小紅書真實頁面偵測仍待實播驗證；缺少直播入口不等於未開播。\n",
-  "sha256": "edcfea7a18335ead224579736ef5913eacca5eaa1df7eafd4141e74f1514bb81"
+  "version": "0.2.1",
+  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.2.1/RednoteLiveRecorder-0.2.1-Setup.exe",
+  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.2.1/RednoteLiveRecorder-0.2.1.zip",
+  "notes": "# 0.2.1 · 修正啟用待命看似無反應\n\n- 按下待命立即顯示啟用進度，處理中防止重複點擊。\n- 錯誤持續顯示在待命按鈕旁，並捲到可見位置，不再被每秒刷新清掉。\n- 未選資料夾或權限失效時，提供「設定／允許儲存資料夾」入口。\n- 先檢查資料夾再取得分頁擷取權限，成功後立即檢查直播。\n- 分頁讀取錯誤也會顯示；不再留下沒有回饋的按鈕操作。\n",
+  "sha256": "0480fc2597c34c372a3f140e19155f928e5476e350ce411602ca5b49029d4191"
 }
