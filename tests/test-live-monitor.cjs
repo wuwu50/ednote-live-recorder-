@@ -27,9 +27,11 @@ console.log('PASS: hostname/owner validation, explicit live link, ended preceden
   const stored = {}; const actions = []; let sample = {kind:'unknown'};
   let state = {phase:'idle',armed:false,jobs:[]};
   const tab = {id:7,url:profile,status:'complete'};
-  const ctx = vm.createContext({URL,Date,Promise,LiveDetector,probeLivePage,contexts:async()=>[{}],ensureOffscreen:async()=>{},
+  let scheduled = 0, missingFolder = false;
+  const ctx = vm.createContext({URL,Date,Promise,setTimeout(){scheduled++;},LiveDetector,probeLivePage,contexts:async()=>[{}],ensureOffscreen:async()=>{},
     offscreen:async(type,extra={})=>{
       actions.push(type);
+      if(type==='arm-preflight' && missingFolder) throw Error('請先選擇儲存資料夾');
       if(type==='arm-capture') state={...state,armed:true,armedTabId:extra.tabId};
       if(type==='disarm-capture') state={...state,phase:'idle',armed:false};
       if(type==='start') {assert(extra.useArmed); state.phase='recording';}
@@ -43,6 +45,8 @@ console.log('PASS: hostname/owner validation, explicit live link, ended preceden
   vm.runInContext(fs.readFileSync('extension/live-monitor.js','utf8'),ctx);
   const call=(s)=>vm.runInContext(s,ctx);
   await call(`armLive({hostId:'${id}',tabId:7})`);
+  assert.equal(scheduled,1,'successful arming schedules an immediate check');
+  assert(actions.indexOf('arm-preflight') < actions.indexOf('capture-grant'),'folder permission checked before acquiring capture');
   sample={kind:'live-link',url:room}; await call('checkLive()'); assert.equal(tab.url,room);
   sample={kind:'playing'}; await Promise.all([call('checkLive()'),call('checkLive()')]);
   assert.equal(actions.filter(a=>a==='start').length,1,'concurrent checks cannot start duplicate recordings');
@@ -57,5 +61,10 @@ console.log('PASS: hostname/owner validation, explicit live link, ended preceden
   sample={kind:'wrong-page'}; await call('checkLive()');
   assert.equal(state.armed,false,'leaving the selected broadcaster releases capture');
   assert.equal(stored.liveMonitor.enabled,false);
+  const grants = actions.filter(a=>a==='capture-grant').length;
+  tab.url=profile;missingFolder=true;
+  await assert.rejects(call(`armLive({hostId:'${id}',tabId:7})`),/儲存資料夾/);
+  assert.equal(actions.filter(a=>a==='capture-grant').length,grants,'missing folder must not acquire a capture grant');
+  assert.equal(state.armed,false);
   console.log('PASS: one capture grant, serialized checks, auto start/stop/return, second broadcast, explicit disarm.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -13,6 +13,7 @@ function armLive(message) { return liveLocked(async()=>{
   await ensureOffscreen();
   const status = await offscreen('status');
   if (status.armed || !['idle','error'].includes(status.phase)) throw new Error('請先停止目前錄影或解除待命。');
+  await offscreen('arm-preflight');
   // The only getMediaStreamId call for monitoring happens after the user's click.
   const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId:tab.id});
   await offscreen('arm-capture',{streamId,tabId:tab.id});
@@ -21,6 +22,7 @@ function armLive(message) { return liveLocked(async()=>{
     await saveLive({enabled:true,hostId,tabId:tab.id,profileUrl:`${url.origin}/user/profile/${hostId}`,knownRoom:url.pathname.startsWith('/livestream/') ? url.href : '',endedCount:0,lastNavigation:Date.now(),message:'已啟用待命，每分鐘檢查；只在確認播放後錄影。'});
     await chrome.alarms.create('live-monitor',{periodInMinutes:1});
   } catch (error) { await offscreen('disarm-capture'); throw error; }
+  setTimeout(()=>{void checkLive().catch(()=>{});},0);
   return liveStatus();
 }); }
 function disarmLive(reason = '已解除待命，錄影片段會在背景儲存。') { return liveLocked(async()=>{

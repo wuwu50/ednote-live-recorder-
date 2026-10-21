@@ -2,7 +2,11 @@ const assert = require('node:assert/strict');
 const {setup} = require('./test-recorder.cjs');
 // The real recorder receives a cloned stream; stopping it must not release its parent.
 (async()=>{
+ const noFolder=setup({manager:true});
+ const missing=await noFolder.command('arm-preflight');assert(!missing.ok);assert(missing.error.includes('儲存資料夾'));
+ assert.equal(noFolder.streams.length,0,'preflight never opens a media stream');
  const t=setup({manager:true,folder:{}});
+ assert((await t.command('arm-preflight')).ok);
  const r=await t.command('arm-capture',{streamId:'armed',tabId:8}); assert(r.ok,r.error);
  const parent=t.streams[0];
  const cloned=[];

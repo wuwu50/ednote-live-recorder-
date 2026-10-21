@@ -1,5 +1,12 @@
 const $ = id => document.getElementById(id);
 let busy = false;
+let operationError = '';
+function actionStatus(text,isError = false) {
+  $('live-action-status').hidden = !text;
+  $('live-action-status').textContent = text;
+  $('live-action-status').dataset.error = String(isError);
+  $('live-folder').hidden = !isError || !/資料夾|存取/.test(text);
+}
 async function command(type, extra = {}) {
   const response = await chrome.runtime.sendMessage({target: 'background', type, ...extra});
   if (!response?.ok) throw new Error(response?.error || '無法連線至錄影機。');
@@ -10,6 +17,7 @@ async function refresh() {
   try {
     const s = await command('status');
     const live = await command('live-status');
+    if (busy) return;
     const observation = live.observation;
     const inputHost = $('host-id').value.trim().toLowerCase();
     const relevant = observation && observation.hostId === inputHost;
@@ -36,26 +44,47 @@ async function refresh() {
     $('monitor-audio').disabled = !['idle','error'].includes(s.phase);
     $('retry').hidden = s.phase !== 'ready';
     $('discard').hidden = s.phase !== 'ready';
-    $('error').textContent = s.error || ((s.jobs || []).some(job=>job.error) ? '有影片尚未儲存完成，請開啟獨立控制視窗處理。' : '');
-  } catch (error) { $('error').textContent = error.message; }
+    $('error').textContent = operationError || s.error || ((s.jobs || []).some(job=>job.error) ? '有影片尚未儲存完成，請開啟獨立控制視窗處理。' : '');
+  } catch (error) {
+    if (busy) return;
+    $('error').textContent = operationError || error.message;
+    if (!operationError) actionStatus(`無法讀取錄影機狀態：${error.message}`,true);
+  }
 }
 async function run(type, extra = {}) {
+  if (busy) return;
   busy = true;
-  let operationError = '';
+  operationError = '';
+  const arming = type === 'live-arm';
+  actionStatus(arming ? '正在檢查分頁、儲存資料夾並啟用待命…' : '正在處理…');
+  $('live-arm').textContent = arming ? '正在啟用待命…' : '啟用目前分頁待命';
   for (const id of ['start','stop','retry','discard','live-check','live-arm','live-disarm']) $(id).disabled = true;
   $('error').textContent = '';
-  try { await command(type, extra); }
-  catch (error) { operationError = error.message; }
+  const waiting = setTimeout(()=>actionStatus(arming ? '仍在準備待命，請留意 Chrome 的權限提示；請勿重複點擊。' : '仍在處理，請稍候…'),10000);
+  try {
+    const values = typeof extra === 'function' ? await extra() : extra;
+    await command(type, values);
+    actionStatus(arming ? '✓ 待命已啟用。將立即檢查一次，之後每分鐘檢查。請保持此分頁開啟。' : type === 'live-disarm' ? '已解除待命，錄影片段將在背景儲存。' : '操作已完成。');
+  }
+  catch (error) {
+    operationError = error.message;
+    actionStatus(`${arming ? '待命未啟用' : '操作未完成'}：${operationError}`,true);
+    $('live-action-status').scrollIntoView({block:'nearest'});
+  }
   finally {
+    clearTimeout(waiting);
     busy = false;
+    $('live-arm').textContent = '啟用目前分頁待命';
     $('retry').disabled = $('discard').disabled = false;
     await refresh();
     if (operationError) $('error').textContent = operationError;
   }
 }
 $('start').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
-  await run('start', {tabId:tab?.id,quality:$('quality').value,monitorAudio:$('monitor-audio').checked});
+  await run('start',async()=>{
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    return {tabId:tab?.id,quality:$('quality').value,monitorAudio:$('monitor-audio').checked};
+  });
 });
 $('stop').addEventListener('click', () => run('stop'));
 $('panel').addEventListener('click', async () => {
@@ -63,8 +92,9 @@ $('panel').addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
     await command('open-panel',{tabId:tab?.id});
     window.close();
-  } catch (error) { $('error').textContent = error.message; }
+  } catch (error) { operationError = error.message; $('error').textContent = error.message; actionStatus(error.message,true); }
 });
+$('live-folder').addEventListener('click',()=>$('panel').click());
 $('retry').addEventListener('click', () => run('download'));
 $('discard').addEventListener('click', () => {
   if (confirm('確定刪除尚未儲存的暫存影片？')) run('discard');
@@ -73,13 +103,19 @@ refresh();
 setInterval(refresh,1000);
 
 $('live-arm').addEventListener('click',async()=>{
-  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
-  await run('live-arm',{tabId:tab?.id,hostId:$('host-id').value.trim()});
+  const hostId = $('host-id').value.trim();
+  await run('live-arm',async()=>{
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    return {tabId:tab?.id,hostId};
+  });
 });
 $('live-disarm').addEventListener('click',()=>run('live-disarm'));
 $('live-check').addEventListener('click',async()=>{
-  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
-  await run('live-inspect',{tabId:tab?.id,hostId:$('host-id').value.trim()});
+  const hostId = $('host-id').value.trim();
+  await run('live-inspect',async()=>{
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    return {tabId:tab?.id,hostId};
+  });
 });
 command('live-status').then(live=>{
   if (document.activeElement !== $('host-id')) $('host-id').value = live.observation?.hostId || live.hostId || '5f0c0b43000000000101fb9c';
