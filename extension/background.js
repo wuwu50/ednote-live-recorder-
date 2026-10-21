@@ -24,7 +24,7 @@ async function offscreen(type, extra = {}) {
   return response.data;
 }
 async function handle(message) {
-  const tracked=['live-arm','live-disarm','live-capture-ended','verify-folder','start','stop','download','save-segments','discard'];
+  const tracked=['live-open-room','live-arm','live-disarm','live-capture-ended','verify-folder','start','stop','download','save-segments','discard'];
   const track=tracked.includes(message.type);
   if(track) await traceEvent('操作開始',{action:message.type,tabId:message.tabId});
   try {
@@ -40,6 +40,7 @@ let lastDiagnosticState='';
 async function handleCommand(message) {
   switch (message.type) {
     case 'live-status': return liveStatus();
+    case 'live-open-room': return openLiveRoom(message);
     case 'live-arm': return armLive(message);
     case 'live-disarm': return disarmLive();
     case 'live-check': await checkLive(); return liveStatus();

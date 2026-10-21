@@ -11,6 +11,7 @@
         <h2>指定主播直播與自動錄影</h2><p class="target-help">工具列角標：未＝未開播／已結束 · 直＝直播中 · 錄＝錄影中 · 存＝存檔 · !＝需處理 · ？＝無法確認</p>
         <label for="host-id">主播帳號 ID</label>
         <input id="host-id" value="5f0c0b43000000000101fb9c" maxlength="24" autocomplete="off">
+        <label for="live-room-url">本場直播分享連結（主頁無提示時使用）</label><input id="live-room-url" type="url" autocomplete="off" spellcheck="false" placeholder="貼上小紅書直播分享連結"><button id="live-open-room" class="update-check">在指定分頁開啟直播連結</button><p class="target-help">待命中會在原擷取分頁開啟並核對播放後錄影；未待命時，開啟後請再按啟用待命。每場連結可能不同，不會用舊連結推斷下次開播。</p>
         <div class="live-observation" aria-live="polite"><strong id="live-state" data-state="unknown">尚未檢查直播狀態</strong><p id="live-detail">檢查直播不需要先開始錄影。</p><p id="live-checked-at">尚無檢查時間</p><p id="live-notification-error"></p></div>
         <button id="live-check" class="update-check">檢查目前直播狀態並通知</button>
         <p id="live-status" class="target-help" role="status">尚未啟用待命</p>

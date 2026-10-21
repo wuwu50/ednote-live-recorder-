@@ -272,12 +272,15 @@ function renderLiveControls() {
   $('live-arm').textContent = pendingOperation === 'live-arm' ? '正在啟用待命…' : '啟用指定分頁待命';
   $('live-disarm').disabled = preview || busy || (!state.armed && !liveState.enabled);
   $('live-check').disabled = preview || busy || !target;
+  $('live-open-room').disabled = preview || busy || !target || !['idle','error'].includes(state.phase);
+  $('live-room-url').disabled = preview || busy || !['idle','error'].includes(state.phase);
   $('host-id').disabled = busy || state.armed || liveState.enabled;
   const message = localError || (busy ? pendingOperation === 'live-arm' ? '正在啟用待命…' : '正在處理…' : !folderReady ? '自動錄影尚未就緒：請在右側選擇資料夾或按「允許存取」。' : liveState.enabled ? '待命已啟用，請保留此視窗；可以最小化。' : '資料夾已就緒，可在此啟用待命。');
   $('live-action-status').hidden = !message;
   $('live-action-status').textContent = message;
   $('live-action-status').dataset.error = String(!!localError);
 }
+$('live-open-room').addEventListener('click',()=>run('live-open-room',{tabId:target?.id,hostId:$('host-id').value.trim(),url:$('live-room-url').value.trim()}));
 $('host-id').addEventListener('input',()=>{hostEdited = true; renderLiveControls();});
 $('live-check').addEventListener('click',()=>run('live-inspect',{tabId:target?.id,hostId:$('host-id').value.trim()}));
 $('live-arm').addEventListener('click',async()=>{

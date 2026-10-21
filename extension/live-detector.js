@@ -110,16 +110,7 @@ function probeLivePage(hostId, knownRoom = '') {
   const possibleRing = profileHeaders.some(scope=>query(scope,'[class*="live-avatar"],[class*="avatar-live"],[class*="live-ring"]').some(visible));
   if (possibleRing) return {kind:'unknown',detail:'頭貼有疑似直播外框，等待文字標籤確認；不判為未開播。'};
   if (document.readyState !== 'complete' || !header || !tabs || !feed || loading) return {kind:'unknown',detail:'尚未辨識到完整的主播主頁，暫不判為未開播。'};
-  const signature = (header.innerText || '').trim().slice(0,1000) + '|' + query(header,'img').map(img=>img.currentSrc || img.src || '').join('|');
-  const key = here.origin + here.pathname;
-  const now = Date.now();
-  const previous = globalThis.__rednoteRecorderProfileSample;
-  if (!previous || previous.key !== key || previous.signature !== signature) {
-    globalThis.__rednoteRecorderProfileSample = {key,signature,firstSeen:now};
-    return {kind:'profile-pending',retryAfterMs:5200,detail:'主播主頁已載入，等待再次確認頭貼與直播卡片狀態。'};
-  }
-  if (now - previous.firstSeen < 5000) return {kind:'profile-pending',retryAfterMs:5200-(now-previous.firstSeen),detail:'正在再次確認主頁直播標記。'};
-  return {kind:'offline',inferred:true,detail:'主頁完整載入且再次檢查未見頭貼直播標籤、直播提示或首張直播卡片（依主頁畫面判讀）。'};
+  return {kind:'unknown',detail:'主頁沒有顯示直播提示，無法據此判定未開播；請開啟有效直播連結檢查。'};
 }
 function clickProfileLiveEntry(hostId,token) {
   const here = new URL(location.href);

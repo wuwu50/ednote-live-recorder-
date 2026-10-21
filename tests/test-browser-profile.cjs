@@ -14,8 +14,8 @@ const feed=extra=>`<div class="feeds-container"><section class="note-item">${ext
   const set=async html=>{await page.evaluate(html=>{document.body.innerHTML=html},html);await page.waitForFunction(()=>[...document.images].every(img=>img.complete));};
   const probe=()=>page.evaluate(id=>probeLivePage(id),id);
   await set(header('')+feed('<span class="title">昨天直播回顧</span>'));
-  assert.equal((await probe()).kind,'profile-pending');await page.evaluate(()=>clock+=6000);
-  let result=await probe();assert.equal(result.kind,'offline');assert.equal(result.inferred,true);
+  assert.equal((await probe()).kind,'unknown');await page.evaluate(()=>clock+=6000);
+  let result=await probe();assert.equal(result.kind,'unknown');assert(!result.inferred,'missing profile cues never prove offline, even after repeated checks');
   await set(header('<span class="live-badge">直播中</span>')+feed('普通筆記'));
   result=await probe();assert.equal(result.kind,'live-indicator');assert(result.entryToken);
   await page.evaluate(()=>{document.querySelector('.user-avatar').addEventListener('click',()=>{window.entryClicked=true})});
@@ -35,6 +35,6 @@ const feed=extra=>`<div class="feeds-container"><section class="note-item">${ext
   await set(header('')+feed('<span>筆記</span>')+'<div aria-busy="true">載入中</div>');assert.equal((await probe()).kind,'unknown');
   await set(header('<a href="/livestream/test/123?host_id='+id+'"><span>直播中</span></a>')+feed('筆記'));
   assert.equal((await probe()).kind,'live-link');
-  console.log('PASS: actual Chrome DOM avatar/LIVE/first-card cues, clickable entry, stable complete-profile offline inference, hidden templates, old note text, rings, loading and verification guards.');
+  console.log('PASS: actual Chrome DOM avatar/LIVE/first-card cues, clickable entry, missing-profile-cue unknown guard, hidden templates, old note text, rings, loading and verification guards.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

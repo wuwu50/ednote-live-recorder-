@@ -82,5 +82,11 @@ console.log('PASS: hostname/owner validation, explicit live link, ended preceden
   sample={kind:'playing',ownerProof:'fixture host link'};await call('checkLive()');
   assert.equal(stored.liveMonitor.recordingCheck.tabId,7);assert.equal(state.tabId,7,'recording remains bound to original capture tab');
   sample={kind:'wrong-host'};await call('checkLive()');assert.equal(state.armed,false);assert.equal(stored.liveMonitor.enabled,false);
+  tab.url=profile;sample={kind:'unknown'};await call(`armLive({hostId:'${id}',tabId:7})`);
+  await assert.rejects(call(`openLiveRoom({hostId:'${id}',tabId:7,url:'https://evil.test/livestream/a?host_id=${id}'})`),/有效/);
+  const supplied=room.replace('www.xiaohongshu.com','www.rednote.com');
+  await call(`openLiveRoom({hostId:'${id}',tabId:7,url:'${supplied}'})`);assert.equal(tab.url,supplied);assert.equal(state.armedTabId,7);assert.equal(stored.liveMonitor.knownRoom,supplied);
+  sample={kind:'playing'};await call('checkLive()');assert.equal(state.phase,'recording');
+  await assert.rejects(call(`openLiveRoom({hostId:'${id}',tabId:7,url:'${room}'})`),/正在錄影/);
   console.log('PASS: one capture grant, serialized checks, auto start/stop/return, second broadcast, explicit disarm.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -156,3 +156,19 @@ function setupLiveMonitor() {
     void liveStatus().then(m=>{if(m.enabled && m.tabId === tabId) return disarmLive('監控分頁已關閉；已停止並嘗試儲存錄影，請重新啟用。');});
   });
 }
+
+function openLiveRoom(message) { return liveLocked(async()=>{
+  const hostId=LiveDetector.hostId(message.hostId),url=String(message.url || '').trim();
+  if(!LiveDetector.room(url,hostId) || !LiveDetector.belongs(url,hostId)) throw Error('請貼上含指定主播 host_id 的有效小紅書直播分享連結。');
+  const m=await liveStatus(),tab=await chrome.tabs.get(message.tabId);
+  if(!LiveDetector.belongs(tab.url,hostId) && !(m.enabled && m.tabId === tab.id && m.hostId === hostId && LiveDetector.room(tab.url,hostId))) throw Error('目前目標不是指定主播，請先在主播分頁點錄影機圖示。');
+  if(m.enabled && (m.tabId !== tab.id || m.hostId !== hostId)) throw Error('目前正在監控其他分頁或主播，請先解除待命。');
+  const status=(await contexts()).length ? await offscreen('status') : {phase:'idle'};
+  if(!['idle','error'].includes(status.phase)) throw Error('目前正在錄影，請先停止並儲存後再更換直播連結。');
+  if(status.armed && (!m.enabled || status.armedTabId !== tab.id)) throw Error('擷取分頁不一致，請先解除待命。');
+  if(m.enabled) await saveLive({...m,knownRoom:url,profileUrl:`${new URL(url).origin}/user/profile/${hostId}`,endedCount:0,lastNavigation:Date.now(),message:'已套用本場直播連結，等待核對主播及影片播放。'});
+  try {await chrome.tabs.update(tab.id,{url});}
+  catch(error){if(m.enabled)await saveLive(m);throw error;}
+  if(typeof traceEvent === 'function') await traceEvent('使用者開啟直播連結',{tabId:tab.id,hostId,armed:!!m.enabled});
+  return null;
+}); }

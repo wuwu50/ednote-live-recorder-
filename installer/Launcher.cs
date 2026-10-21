@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
 [assembly: AssemblyTitle("小紅書直播錄影機")]
-[assembly: AssemblyVersion("0.5.0.0")]
+[assembly: AssemblyVersion("0.5.1.0")]
 static class Launcher {
   static readonly string ExtensionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"extension");
   [STAThread] static int Main(string[] args) {
@@ -25,7 +25,7 @@ static class Launcher {
     layout.RowStyles.Add(new RowStyle(SizeType.Absolute,54));
     layout.RowStyles.Add(new RowStyle(SizeType.Absolute,54));
     layout.RowStyles.Add(new RowStyle(SizeType.Absolute,60));
-    layout.Controls.Add(new Label { Text="小紅書直播錄影機  v0.5.0", Font=new Font("Microsoft JhengHei",20,FontStyle.Bold), Dock=DockStyle.Fill, TextAlign=ContentAlignment.MiddleLeft },0,0);
+    layout.Controls.Add(new Label { Text="小紅書直播錄影機  v0.5.1", Font=new Font("Microsoft JhengHei",20,FontStyle.Bold), Dock=DockStyle.Fill, TextAlign=ContentAlignment.MiddleLeft },0,0);
     layout.Controls.Add(new Label { Text="第一次使用：\r\n\r\n1. 按下方按鈕開啟 Chrome 擴充功能頁。\r\n2. 開啟右上角「開發人員模式」。\r\n3. 按「載入未封裝項目」，貼上下方資料夾路徑。\r\n4. 釘選「小紅書直播錄影機」到 Chrome 工具列。\r\n\r\n錄影：在主播分頁點圖示，所有操作都在同一控制視窗。\r\n升級：先停止錄影並儲存，安裝後會自動啟用新版。\r\n直播：同一視窗選好資料夾後啟用待命；可最小化，請勿關閉。", Dock=DockStyle.Fill },0,1);
     layout.Controls.Add(new Label { Text="Chrome 要載入的擴充功能資料夾",Dock=DockStyle.Fill },0,2);
     layout.Controls.Add(new TextBox { Text=ExtensionPath, ReadOnly=true, Dock=DockStyle.Fill },0,3);

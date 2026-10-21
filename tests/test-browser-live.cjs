@@ -6,8 +6,8 @@ const icon='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAA
  const ctx=await chromium.launchPersistentContext(path.resolve('build/browser-test-'+Date.now()),{executablePath:process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,acceptDownloads:true,viewport:{width:960,height:720},args:['--enable-unsafe-extension-debugging','--autoplay-policy=no-user-gesture-required'],ignoreDefaultArgs:['--disable-extensions']});
  try{
   const cdp=await ctx.browser().newBrowserCDPSession();const {id:extension}=await cdp.send('Extensions.loadUnpacked',{path:path.resolve('extension')});
-  let live=true,mode=process.argv[2]||'new-tab';
-  await ctx.route('https://www.rednote.com/**',route=>{
+  let mode=process.argv[2]||'new-tab',live=mode!=='provided';
+  await ctx.route(/^https:\/\/www\.(rednote|xiaohongshu)\.com\//,route=>{
    const u=new URL(route.request().url());
    if(u.pathname.startsWith('/user/profile/'))return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><style>body{background:rgb(220,0,0);color:white}.user-avatar{cursor:pointer}</style><div class="user-info"><div class="user-avatar" role="button" onclick="${mode==='new-tab'?'window.open':'location.assign'}('/livestream/fixture/123?host_id=${host}'${mode==='new-tab'?",'_blank'":''})"><img width="50" height="50" src="${icon}">${live?'<span class="live-badge">直播中</span>':''}</div><div class="user-name">指定主播</div></div><div class="reds-tabs-list">筆記 收藏</div><div class="feeds-container"><section class="note-item">個人主頁，不應錄到紅色畫面</section></div>`});
    return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><style>body{margin:0;background:rgb(0,220,0)}video{width:100vw;height:90vh;object-fit:fill}</style><div class="host-info"><a href="/user/profile/${host}">指定主播</a></div><video autoplay muted playsinline></video><script>const c=document.createElement('canvas');c.width=640;c.height=360;const x=c.getContext('2d');let n=0;setInterval(()=>{x.fillStyle='rgb(0,220,0)';x.fillRect(0,0,640,360);x.fillStyle='black';x.font='24px sans-serif';x.fillText('LIVE ROOM '+n++,20,50)},40);const stream=c.captureStream(25);const ac=new AudioContext(),dest=ac.createMediaStreamDestination(),tone=ac.createOscillator();tone.connect(dest);tone.start();stream.addTrack(dest.stream.getAudioTracks()[0]);document.querySelector('video').srcObject=stream;</script>`});
@@ -29,6 +29,11 @@ const icon='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAA
   console.log('PREFLIGHT',await panel.evaluate(()=>({folder:document.querySelector('#folder-status').textContent,error:document.querySelector('#error').textContent,busy,folderReady,folderLoading,target,state,liveState})));
   await panel.waitForFunction(()=>!document.querySelector('#live-arm').disabled,null,{timeout:10000});
   await panel.locator('#live-arm').click();
+  if(mode==='provided') {
+    await panel.waitForFunction(()=>liveState.enabled);
+    await panel.locator('#live-room-url').fill(`https://www.xiaohongshu.com/livestream/fixture/123?host_id=${host}&xsec_token=TEST_SECRET`);
+    await panel.locator('#live-open-room').click();
+  }
   for(let i=0;i<100;i++){
    const status=await panel.evaluate(async()=>({live:(await chrome.runtime.sendMessage({target:'background',type:'live-status'})).data,rec:(await chrome.runtime.sendMessage({target:'background',type:'status'})).data}));
    if(status.rec?.phase==='recording'){
