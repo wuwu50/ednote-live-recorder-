@@ -1,7 +1,7 @@
 {
-  "version": "0.3.0",
-  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.3.0/RednoteLiveRecorder-0.3.0-Setup.exe",
-  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.3.0/RednoteLiveRecorder-0.3.0.zip",
-  "notes": "# 0.3.0 · 統一控制視窗與資料夾權限\n\n- 工具列直接開啟並重用同一個完整控制視窗，移除不同功能的小視窗介面。\n- 主播、直播狀態、待命、手動錄影、儲存資料夾、救援與更新整合在同一視窗。\n- 資料夾選取及授權在可見控制視窗完成；背景端實際寫入及清除檢查檔後才顯示可用。\n- 權限失效／背景無法寫入時不會只因記住資料夾名稱就允許待命。\n- 控制視窗可以最小化；待命、錄影或待存影片尚未完成時關閉會提示。\n- 原始影片暫存與失敗救援維持保留，沒有移除重裝或清除資料的要求。\n",
-  "sha256": "b5e5934d353adc73bc2f53de1a12fbf6ba2c86433920fcc0fc77769acd172a5f"
+  "version": "0.3.1",
+  "downloadUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.3.1/RednoteLiveRecorder-0.3.1-Setup.exe",
+  "zipUrl": "https://github.com/wuwu50/ednote-live-recorder-/releases/download/v0.3.1/RednoteLiveRecorder-0.3.1.zip",
+  "notes": "# 0.3.1 · 工具列監控狀態\n\n- 工具列角標：灰「未」、綠「直」、紅「錄」，直接辨認未開播、直播中與實際錄影。\n- 加入藍「存」、橘「!」、黃「？」區分存檔、需處理、未知或結果過期。\n- 滑鼠移上圖示顯示完整狀態及待命狀態。\n- 錄影優先顯示；直播查詢、背景存檔不會覆蓋正在錄影的標示。\n- 更新後重讀工作階段狀態；錄影背景文件消失時不會誤顯示仍在錄影。\n",
+  "sha256": "7e0641a0e86e4b3eb4a43e7f311463d10b6daf2b2dcb167db9af6bf1c29c4de8"
 }
