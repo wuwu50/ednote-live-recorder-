@@ -4,7 +4,11 @@ async function liveStatus() {
   const monitor = (await chrome.storage.session.get('liveMonitor')).liveMonitor || {enabled:false,message:'尚未啟用待命'};
   return {...monitor,observation:(await chrome.storage.session.get('liveObservation')).liveObservation || null};
 }
-async function saveLive(value) { await chrome.storage.session.set({liveMonitor:value}); return value; }
+async function saveLive(value) {
+  await chrome.storage.session.set({liveMonitor:value});
+  if (typeof ToolbarStatus !== 'undefined') void ToolbarStatus.refresh().catch(()=>{});
+  return value;
+}
 function armLive(message) { return liveLocked(async()=>{
   const hostId = LiveDetector.hostId(message.hostId);
   if ((await liveStatus()).enabled) throw new Error('已在待命，請先解除。');

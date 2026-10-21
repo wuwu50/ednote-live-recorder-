@@ -28,6 +28,7 @@ async function reportLiveSample(sample, {hostId,tabId,confirmedEnd = false,force
     } catch (_) { observation.notificationError = '桌面通知未送出，請檢查 Chrome／Windows 通知設定；上方狀態仍有效。'; }
   }
   await chrome.storage.session.set({liveObservation:observation});
+  if (typeof ToolbarStatus !== 'undefined') void ToolbarStatus.refresh().catch(()=>{});
   return observation;
 }
 function inspectLiveNow(message) { return liveLocked(async()=>{

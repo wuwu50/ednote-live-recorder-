@@ -21,12 +21,14 @@ const source=fs.readFileSync('extension/background.js','utf8');
    },
    offscreen:{async createDocument(){creations++;await new Promise(r=>setTimeout(r,5));created=true}},
    storage:{session:{async get(key){return {[key]:session[key]}},async set(value){Object.assign(session,value)}},local:{async get(key){return {[key]:local[key]}},async set(value){Object.assign(local,value)},async remove(key){delete local[key]}}},
-   action:{onClicked:{addListener(fn){actionListener=fn}},async setBadgeText(){},async setBadgeBackgroundColor(){}},
+   action:{onClicked:{addListener(fn){actionListener=fn}},async setTitle(){},async setBadgeText(){},async setBadgeBackgroundColor(){}},
+   alarms:{async create(){},onAlarm:{addListener(){}}},
    windows:{async create(){panelCreates++;return {id:20}},async update(){panelFocuses++}},
    tabs:{async get(id){return {id,title:'target',url:'https://www.rednote.com/user/profile/test'}},onUpdated:{addListener(){}}},
    downloads:{async download(options){assert.equal(options.saveAs,false);const id=++downloadId;items.set(id,{id,state:'complete'});return id},async search({id}){return [items.get(id)]},onChanged:{addListener(){}}}
   }
  });
+ vm.runInContext(fs.readFileSync('extension/toolbar-status.js','utf8'),context);
  vm.runInContext(source,context);
  const statuses=await Promise.all([command('status'),command('status')]);
  assert(statuses.every(result=>result.ok && result.data.phase==='ready'));assert.equal(creations,1);assert.equal(restorations,1);

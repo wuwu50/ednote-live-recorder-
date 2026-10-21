@@ -8,7 +8,7 @@ function snapshot() {
 }
 function notify() {
   const state = snapshot();
-  chrome.runtime.sendMessage({target:'background',type:'state',phase:state.phase === 'idle' && state.jobs.some(job=>job.phase !== 'ready') ? 'saving' : state.phase,error:state.error || ''}).catch(()=>{});
+  chrome.runtime.sendMessage({target:'background',type:'state',phase:state.phase,error:state.error || '',recorderState:{phase:state.phase,error:state.error || '',preparing:state.preparing,jobs:state.jobs.map(job=>({phase:job.phase,error:job.error || ''}))}}).catch(()=>{});
 }
 function addSession(id,sessionRoot,legacy = false) {
   const job = {id,legacy,queued:false,running:false,finish:null,session:null};

@@ -1,4 +1,4 @@
-importScripts('updates.js','audio-routing.js','installed-update.js','live-detector.js','live-status.js','live-monitor.js');
+importScripts('updates.js','audio-routing.js','installed-update.js','toolbar-status.js','live-detector.js','live-status.js','live-monitor.js');
 let starting = false;
 let creating = null;
 let diagnosticWrites = Promise.resolve();
@@ -22,10 +22,6 @@ async function offscreen(type, extra = {}) {
   const response = await chrome.runtime.sendMessage({target:'offscreen',type,...extra});
   if (!response?.ok) throw new Error(response?.error || '背景錄影機沒有回應。');
   return response.data;
-}
-async function setBadge(phase) {
-  await chrome.action.setBadgeText({text: ['recording','rotating'].includes(phase) ? 'REC' : ['ready','downloading','saving','merging'].includes(phase) ? '存' : ''});
-  await chrome.action.setBadgeBackgroundColor({color:'#d9415b'});
 }
 async function handle(message) {
   switch (message.type) {
@@ -59,6 +55,7 @@ async function handle(message) {
     case 'status': {
       await ensureOffscreen();
       const result = await offscreen('status');
+      void ToolbarStatus.record(result).catch(()=>{});
       if (!result.error) result.error = (await chrome.storage.local.get('lastError')).lastError || '';
       void checkForInstalledUpdate();
       return result;
@@ -90,7 +87,7 @@ async function handle(message) {
         const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId:tab.id});
         const result = await offscreen('start',{streamId,title:tab.title || 'Chrome 分頁',tabId:tab.id,quality:message.quality,monitorAudio:message.monitorAudio === true,mergeAfterStop:message.mergeAfterStop !== false});
         await chrome.storage.local.remove('lastError');
-        await setBadge('recording');
+        void ToolbarStatus.record(result).catch(()=>{});
         return result;
       } finally { starting = false; }
     }
@@ -99,8 +96,8 @@ async function handle(message) {
     case 'save-segments': return offscreen('save-segments',{jobId:message.jobId});
     case 'discard': return offscreen('discard',{jobId:message.jobId});
     case 'state':
-      await setBadge(message.phase);
       await chrome.storage.local.set({lastError:message.error || ''});
+      void ToolbarStatus.record(message.recorderState || {phase:message.phase,error:message.error}).catch(()=>{});
       return null;
     case 'save-file': {
       const id = await chrome.downloads.download({url:message.url,filename:message.filename,saveAs:message.saveAs !== false});
@@ -139,13 +136,14 @@ async function finishDownload(id,state,error) {
 chrome.downloads.onChanged.addListener(delta => {
   if (delta.state) finishDownload(delta.id,delta.state.current,delta.error?.current);
 });
-chrome.runtime.onStartup.addListener(() => setBadge('idle'));
+chrome.runtime.onStartup.addListener(() => {void ToolbarStatus.record({phase:'idle'}).catch(()=>{});});
 chrome.tabs.onUpdated.addListener((tabId,change) => {
   capturedTabMuted(tabId,change).catch(error => chrome.storage.local.set({lastError:`分頁音訊處理失敗：${error.message}`}));
 });
 setupInstalledUpdateWatch();
 
 setupLiveMonitor();
+ToolbarStatus.setup();
 chrome.action.onClicked.addListener(tab=>{
   handle({type:'open-panel',tabId:tab.id}).catch(error=>chrome.storage.local.set({lastError:error.message}));
 });
